@@ -3,3 +3,4 @@
 
 Project
 Datasets/**/*.data
+__pycache__
