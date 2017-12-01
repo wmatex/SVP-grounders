@@ -3,6 +3,7 @@
 import argparse
 import random
 import math
+import itertools
 
 random.seed(0)
 
@@ -16,8 +17,8 @@ def parse_arguments():
     parser.add_argument('-t', '--tables', type=int, default=3,
                         help='Number of tables')
 
-    parser.add_argument('-r', '--relations', type=float, default=0.5,
-                        help='Relative connectedness (number of connections is <relations> * <tables>^2)')
+    parser.add_argument('-r', '--relations', type=int, default=2,
+                        help='Number of connections')
 
     parser.add_argument('-c', '--columns', type=int, default=3,
                         help='Average number of table columns')
@@ -129,12 +130,11 @@ if __name__ == "__main__":
         table = Table(t, columns, args.facts)
         tables.append(table)
 
-    num_relations = math.floor(args.relations * args.tables**2)
+    num_relations = min(args.relations, args.tables**2)
+    pairs = itertools.product(tables, tables)
+    pairs = random.sample(list(pairs), num_relations)
 
-    for r in range(int(num_relations)):
-        t1 = random.choice(tables)
-        t2 = random.choice(tables)
-
+    for t1, t2 in pairs:
         t1.addRelation(t2)
 
     for u in range(args.rules):
