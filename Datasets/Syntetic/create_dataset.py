@@ -29,7 +29,7 @@ def parse_arguments():
 
     parser.add_argument(
         '-c', '--columns', type=int, default=3,
-        help='Average number of table columns'
+        help='Maximum number of table columns'
     )
 
     return parser.parse_args()
@@ -72,10 +72,12 @@ if __name__ == "__main__":
 
     tables = []
     rules = []
-    columns = args.columns
+    max_columns = args.columns
 
+    cols = 1
+    k = (max_columns - 1)/(args.tables - 1)
     for t in range(args.tables):
-        table = Table(t, columns, args.facts)
+        table = Table(t, round(k*t + 1), args.facts)
         tables.append(table)
 
     random.seed(0)
