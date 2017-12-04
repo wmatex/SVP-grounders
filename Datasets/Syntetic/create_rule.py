@@ -38,6 +38,11 @@ def parse_arguments():
     )
 
     parser.add_argument(
+        '-a', '--all', action='store_true',
+        help='Use all body variables in the head'
+    )
+
+    parser.add_argument(
         '-p', '--print', action='store_true',
         help='Print the data source file to stdout'
     )
@@ -88,11 +93,15 @@ class Rule:
         tables = random.sample(list(parser.predicates), num_of_tables)
         self._tables = [parser.predicates[t] for t in tables]
 
-    def _create_head(self, tables, duplicity, unique_names=False):
+    def _create_head(self, tables, duplicity, unique_names=False, all_body=False):
         head_symbols = {}
 
         for t in tables:
-            head_symbols[t['name']] = head_symbols.get(t['name'], 0) + 1
+            n = 1
+            if all_body:
+                n = t['arity'] - len(t['relations'])
+            head_symbols[t['name']] = head_symbols.get(t['name'], 0) + n
+
 
         heads = []
         for name, count in head_symbols.items():
@@ -104,7 +113,7 @@ class Rule:
                         heads.extend([name.upper() + str(index) for index in range(count)])
 
             else:
-                heads.append(name.upper() + "0")
+                heads.extend([name.upper() + str(index) for index in range(count)])
 
         return heads
 
@@ -122,9 +131,8 @@ class Rule:
 
         return variables
 
-
-    def generate(self, width, duplicity, unique_names):
-        head_symbols = self._create_head(self._tables, duplicity, unique_names)
+    def generate(self, duplicity, unique_names, all_body):
+        head_symbols = self._create_head(self._tables, duplicity, unique_names, all_body)
         print("rule_" + self._id + "(" + ", ".join(head_symbols) + ") :- ", end="")
 
         table_rules = []
@@ -138,6 +146,7 @@ class Rule:
 
         print(", ".join(table_rules) + ".")
 
+
 if __name__ == "__main__":
     args = parse_arguments()
 
@@ -145,4 +154,4 @@ if __name__ == "__main__":
 
     for i in range(args.count):
         r = Rule(i, parser, args.width)
-        r.generate(args.width, args.duplicity, args.unique)
+        r.generate(args.duplicity + 1, args.unique, args.all)
