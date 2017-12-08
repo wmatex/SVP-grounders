@@ -8,7 +8,6 @@ from utils import generate_identifier
 
 random.seed(0)
 
-
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Generate syntetic dataset for grounder')
 
@@ -28,11 +27,17 @@ def parse_arguments():
     )
 
     parser.add_argument(
-        '-c', '--columns', type=int, default=3,
+        '-mx', '--max-columns', type=int, default=3,
         help='Maximum number of table columns'
     )
 
+    parser.add_argument(
+        '-mi', '--min-columns', type=int, default=1,
+        help='Minimum number of table columns'
+    )
+
     return parser.parse_args()
+
 
 class Table:
     def __init__(self, id, columns, rows):
@@ -50,9 +55,11 @@ class Table:
         rows = len(self._data)
         return self._data[random.randint(0, rows-1)][0]
 
+
 class Convertor:
     def convertTo(self, tables):
         pass
+
 
 class DatalogConvertor(Convertor):
     def convertTo(self, tables):
@@ -67,17 +74,19 @@ class DatalogConvertor(Convertor):
             for row in t._data:
                 print(t._id + "(" + ", ".join(row) + ").")
 
+
 if __name__ == "__main__":
     args = parse_arguments()
 
     tables = []
     rules = []
-    max_columns = args.columns
+    max_columns = args.max_columns
+    min_columns = args.min_columns
 
     cols = 1
-    k = (max_columns - 1)/(args.tables - 1)
+    k = (max_columns - min_columns)/(args.tables - 1)
     for t in range(args.tables):
-        table = Table(t, round(k*t + 1), args.facts)
+        table = Table(t, round(k*t + min_columns), args.facts)
         tables.append(table)
 
     random.seed(0)
