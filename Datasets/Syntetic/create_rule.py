@@ -4,6 +4,8 @@ import random
 import argparse
 import sys
 import re
+import numpy as np
+import weights
 from utils import generate_identifier
 
 random.seed(0)
@@ -40,6 +42,11 @@ def parse_arguments():
     parser.add_argument(
         '-a', '--all', action='store_true',
         help='Use all body variables in the head'
+    )
+
+    parser.add_argument(
+        '-wg', '--weight', type=float, default=0.5,
+        help='Weight of the table with <min> columns'
     )
 
     parser.add_argument(
@@ -82,15 +89,21 @@ class Parser:
 
 
 class Rule:
-    def __init__(self, id, parser, num_of_tables):
+    def __init__(self, id, parser, num_of_tables, first_item_weight=0.5):
         self._id = generate_identifier(id)
 
-        self._create(parser, num_of_tables)
+        self._create(parser, num_of_tables, first_item_weight)
 
-    def _create(self, parser, num_of_tables):
+    def _create(self, parser, num_of_tables, first_item_weight):
         num_of_tables = min(num_of_tables, len(parser.predicates))
 
-        tables = random.sample(list(parser.predicates), num_of_tables)
+        tables = list(parser.predicates)
+        tables.sort(key=lambda k: parser.predicates[k]['arity'])
+        wgs = weights.generate(tables, first_item_weight)
+
+        non_zero = sum(i > 0 for i in wgs)
+        num_of_tables = min(num_of_tables, non_zero)
+        tables = np.random.choice(tables, size=num_of_tables, p=wgs, replace=False)
         self._tables = [parser.predicates[t] for t in tables]
 
     def _create_head(self, tables, duplicity, unique_names=False, all_body=False):
@@ -153,5 +166,5 @@ if __name__ == "__main__":
     parser = Parser(args.data, args.print)
 
     for i in range(args.count):
-        r = Rule(i, parser, args.width)
+        r = Rule(i, parser, args.width, args.weight)
         r.generate(args.duplicity + 1, args.unique, args.all)

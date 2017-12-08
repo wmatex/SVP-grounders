@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-def weights_generate(items, first_item_weight):
+def generate(items, first_item_weight):
     p = first_item_weight
 
     if p < 0.5:
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     N = 10
     for w in np.arange(0, 1.1, 0.1):
         weights.append(range(N))
-        weights.append(weights_generate(range(N), w))
+        weights.append(generate(range(N), w))
 
 
     plt.plot(*[w for w in weights])
