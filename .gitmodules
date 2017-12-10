@@ -1,3 +1,6 @@
 [submodule "Grounders/clingo"]
 	path = Grounders/clingo
 	url = https://github.com/potassco/clingo
+[submodule "Thesis/ctuthesis"]
+	path = Thesis/ctuthesis
+	url = https://github.com/tohecz/ctuthesis
