@@ -35,7 +35,7 @@ if __name__ == "__main__":
         weights.append(generate(range(N), w))
 
 
-    plt.plot(*[w for w in weights])
+    plt.plot(*weights)
     plt.show()
 
 
