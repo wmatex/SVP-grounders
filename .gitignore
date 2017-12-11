@@ -4,3 +4,9 @@
 Project
 Datasets/**/*.data
 __pycache__
+.latex.json
+Tex/**/*.gz
+Tex/**/*.aux
+Tex/**/*.fls
+Tex/**/*.log
+Tex/**/*.fdb_latexmk
