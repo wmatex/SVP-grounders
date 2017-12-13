@@ -4,3 +4,9 @@
 Project
 Datasets/**/*.data
 __pycache__
+*.pyc
+
+
+_build
+
+

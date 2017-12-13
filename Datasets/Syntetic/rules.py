@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+"""
+Create rules from defined datasets based on provided features.
+"""
+
 import random
 import argparse
 import sys
@@ -56,9 +60,28 @@ def parse_arguments():
 
     return parser.parse_args()
 
+
 class Parser:
+    """
+    Parse the structure of the given dataset from the file header
+    """
     def __init__(self, data_file, print_to_stdout):
+        """
+        :param data_file: Handler of the file, which should be parsed
+        :param print_to_stdout:  Whether to copy the *data_file* to the stdout
+            (useful when creating complete dataset with rules)
+        """
         self.predicates = {}
+        """
+        Dictionary with the parsed predicates.
+        
+        The keys are the predicate names and the attributes are following:
+            arity: predicate arity
+            
+            name: the same as the key
+            
+            relations: array of the names of the relations in the given order
+        """
         self._parse(data_file, print_to_stdout)
 
     def _parse_atoms(self, line):
@@ -89,7 +112,16 @@ class Parser:
 
 
 class Rule:
+    """
+    Class with single rule definition
+    """
     def __init__(self, id, parser, num_of_tables, first_item_weight=0.5):
+        """
+        :param id: Numeric id used for identifier generation
+        :param parser: Instance of the 'Parser' class
+        :param num_of_tables: Number of tables to be used in the rule
+        :param first_item_weight: Weight of the first item as required by :py:func:`weights.generate`
+        """
         self._id = generate_identifier(id)
 
         self._create(parser, num_of_tables, first_item_weight)
@@ -145,6 +177,13 @@ class Rule:
         return variables
 
     def generate(self, duplicity, unique_names, all_body):
+        """
+        Generate the rule definition and print it to the standard output
+
+        :param int duplicity: How many times to duplicate each body predicate
+        :param boolean unique_names: Whether to use unique variable names for each duplicate body predicate
+        :param boolean all_body: Whether to include all variables from the body predicates in the head of the rule
+        """
         head_symbols = self._create_head(self._tables, duplicity, unique_names, all_body)
         print("rule_" + self._id + "(" + ", ".join(head_symbols) + ") :- ", end="")
 
