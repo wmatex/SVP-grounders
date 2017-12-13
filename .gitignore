@@ -6,7 +6,11 @@ Datasets/**/*.data
 __pycache__
 *.pyc
 
-
 _build
 
-
+.latex.json
+Tex/**/*.gz
+Tex/**/*.aux
+Tex/**/*.fls
+Tex/**/*.log
+Tex/**/*.fdb_latexmk
