@@ -163,6 +163,7 @@ if __name__ == "__main__":
         r.generate(args.duplicity + 1, args.unique, args.all)
         rules.append(r)
 
-    exporter = convert.DatalogExporter()
+    #exporter = convert.DatalogExporter()
+    exporter = convert.PrologExporter()
     exporter.export(rules)
 

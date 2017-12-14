@@ -19,11 +19,16 @@ class Exporter:
             else:
                 raise TypeError('This class is not supported: {}'.format(v.__class__.__name__))
 
+        self._finalize(values)
+
     def _export_table(self, table):
         raise NotImplementedError
 
     def _export_rule(self, rule):
         raise NotImplementedError
+
+    def _finalize(self, values):
+        pass
 
 
 class DatalogExporter(Exporter):
@@ -41,6 +46,18 @@ class DatalogExporter(Exporter):
         print("rule_" + rule._id + "(" + ", ".join(rule.head_symbols) + ") :- ", end="", file=self._file)
         tables = [tr['name'] + "(" + ", ".join(tr['variables']) + ")" for tr in rule.table_rules]
         print(", ".join(tables) + ".")
+
+class PrologExporter(DatalogExporter):
+    def _export_rule(self, rule):
+        super()._export_rule(rule)
+
+        rule_string = "rule_" + rule._id + "(" + ",".join(rule.head_symbols) + ")"
+
+        print(":- findall(" + rule_string + ", " + rule_string + ", G), writeln(G).", file=self._file)
+
+    def _finalize(self, values):
+        print(":- halt.", file=self._file)
+
 
 class Importer:
     """
