@@ -2,9 +2,9 @@
 
 import argparse
 import random
-import math
 import itertools
 from utils import generate_identifier
+import convert
 
 random.seed(0)
 
@@ -56,23 +56,6 @@ class Table:
         return self._data[random.randint(0, rows-1)][0]
 
 
-class Convertor:
-    def convertTo(self, tables):
-        pass
-
-
-class DatalogConvertor(Convertor):
-    def convertTo(self, tables):
-        for t in tables:
-            print("% " + t._id + ":" + str(len(t._data[0])) + ":[", end="")
-            rels = []
-            for r in t._relations:
-                rels.append(r._id)
-            print(",".join(rels) + "]")
-
-        for t in tables:
-            for row in t._data:
-                print(t._id + "(" + ", ".join(row) + ").")
 
 
 if __name__ == "__main__":
@@ -97,5 +80,5 @@ if __name__ == "__main__":
     for t1, t2 in pairs:
         t1.addRelation(t2)
 
-    convertor = DatalogConvertor()
-    convertor.convertTo(tables)
+    exporter = convert.DatalogExporter()
+    exporter.export(tables)
