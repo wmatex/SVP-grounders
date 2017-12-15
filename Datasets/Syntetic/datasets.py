@@ -8,6 +8,7 @@ import convert
 
 random.seed(0)
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Generate syntetic dataset for grounder')
 
@@ -46,16 +47,14 @@ class Table:
         self._data = [[generate_identifier(id, i*columns + j) for j in range(columns)] for i in range(rows)]
         self._relations = []
 
-    def addRelation(self, table):
+    def add_relation(self, table):
         self._relations.append(table)
         for row in self._data:
-            row.append(table.getRandomId())
+            row.append(table.get_random_id())
 
-    def getRandomId(self):
+    def get_random_id(self):
         rows = len(self._data)
         return self._data[random.randint(0, rows-1)][0]
-
-
 
 
 if __name__ == "__main__":
@@ -78,7 +77,7 @@ if __name__ == "__main__":
     pairs = random.sample(list(pairs), num_relations)
 
     for t1, t2 in pairs:
-        t1.addRelation(t2)
+        t1.add_relation(t2)
 
     exporter = convert.DatalogExporter()
     exporter.export(tables)
