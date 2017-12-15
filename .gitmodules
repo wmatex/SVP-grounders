@@ -4,3 +4,6 @@
 [submodule "Thesis/ctuthesis"]
 	path = Tex/Thesis/ctuthesis
 	url = https://github.com/tohecz/ctuthesis
+[submodule "Grounders/swi-prolog"]
+	path = Grounders/swi-prolog
+	url = https://github.com/SWI-Prolog/swipl-devel
