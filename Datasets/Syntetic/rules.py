@@ -15,6 +15,7 @@ from utils import generate_identifier
 random.seed(0)
 np.random.seed(0)
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Generate rules for defined dataset')
 
@@ -59,9 +60,12 @@ def parse_arguments():
         help='Print the data source file to stdout'
     )
 
+    parser.add_argument(
+        '--type', default='datalog', choices=['datalog', 'prolog'],
+        help='Type of exported file format'
+    )
+
     return parser.parse_args()
-
-
 
 
 class Rule:
@@ -76,6 +80,8 @@ class Rule:
         :param first_item_weight: Weight of the first item as required by :py:func:`weights.generate`
         """
         self._id = generate_identifier(id)
+        self.table_rules = []
+        self.head_symbols = []
 
         self._create(predicates, num_of_tables, first_item_weight)
 
@@ -99,7 +105,6 @@ class Rule:
             if all_body:
                 n = t['arity'] - len(t['relations'])
             head_symbols[t['name']] = head_symbols.get(t['name'], 0) + n
-
 
         heads = []
         for name, count in head_symbols.items():
@@ -139,7 +144,6 @@ class Rule:
         """
         self.head_symbols = self._create_head(self._tables, duplicity, unique_names, all_body)
 
-        self.table_rules = []
         for t in self._tables:
             prefix = t['name'].upper()
 
@@ -163,7 +167,11 @@ if __name__ == "__main__":
         r.generate(args.duplicity + 1, args.unique, args.all)
         rules.append(r)
 
-    #exporter = convert.DatalogExporter()
-    exporter = convert.PrologExporter()
+    exporter = None
+    if args.type == 'datalog':
+        exporter = convert.DatalogExporter()
+    elif args.type == 'prolog':
+        exporter = convert.PrologExporter()
+
     exporter.export(rules)
 

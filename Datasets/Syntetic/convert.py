@@ -3,6 +3,7 @@
 import sys
 import re
 
+
 class Exporter:
     def __init__(self, file=sys.stdout):
         if type(file) == "string":
