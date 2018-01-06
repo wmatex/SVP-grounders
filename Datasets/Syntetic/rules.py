@@ -118,7 +118,7 @@ class Rule:
             else:
                 heads.extend([name.upper() + str(index) for index in range(count)])
 
-        return heads
+        return sorted(heads)
 
     def _create_body(self, prefix, arity, relations, dup, unique_names):
         variables = []
