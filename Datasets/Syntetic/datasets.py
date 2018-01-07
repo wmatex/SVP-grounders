@@ -41,11 +41,23 @@ def parse_arguments():
 
 
 class Table:
-    def __init__(self, id, columns, rows):
+    def __init__(self, id, columns, rows, generate=True):
         self._id = generate_identifier(id)
         self._columns = columns
-        self._data = [[generate_identifier(id, i*columns + j) for j in range(columns)] for i in range(rows)]
+        if generate:
+            self._data = [[generate_identifier(id, i*columns + j) for j in range(columns)] for i in range(rows)]
+        else:
+            self._data = None
+
         self._relations = {}
+
+    @staticmethod
+    def from_data(name, data, relations):
+        t = Table(0, len(data[0]), len(data), False)
+        t._id = name
+        t._data = data
+        t._relations = relations
+        return t
 
     def add_relation(self, table):
         self._relations[len(self._data[0])] = table
