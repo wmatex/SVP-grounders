@@ -41,16 +41,36 @@ function build_dlv() {
     chmod +x dlv
 }
 
+function build_lparse() {
+    BUILD_DIR="build"
+
+    cd lparse
+    if [ ! -d $BUILD_DIR ]; then
+        mkdir $BUILD_DIR
+    fi
+
+    wget http://www.tcs.hut.fi/Software/smodels/src/lparse-1.1.2.tar.gz
+    tar xvf lparse-1.1.2.tar.gz
+    ./patch.sh
+    cd lparse-1.1.2
+    ./configure --prefix=../build
+    make
+    make install
+}
+
 if [ "$1" = "--all" ]; then
     build_clingo
     build_swi_prolog
     build_dlv
+    build_lparse
 elif [ "$1" = "--clingo" ]; then
     build_clingo
 elif [ "$1" = "--swi-prolog" ]; then
     build_swi_prolog
 elif [ "$1" = "--dlv" ]; then
     build_dlv
+elif [ "$1" = "--lparse" ]; then
+    build_lparse
 else
     print_help
     exit 1

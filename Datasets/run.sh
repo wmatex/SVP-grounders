@@ -149,7 +149,7 @@ function generate_rules() {
 
 function grounder_to_format() {
     case $1 in
-        gringo|dlv)
+        gringo|dlv|lparse)
             echo "datalog"
             ;;
 
@@ -184,6 +184,13 @@ function run_dlv() {
     cat $RUNS
 }
 
+function run_lparse() {
+    RUNS="$1/runs-lparse.txt"
+
+    $GROUNDERS/lparse/build/lparse -t -W none $2 > $RUNS
+    cat $RUNS
+}
+
 experiment_dir=$(setup_experiment)
 dataset=""
 if [ -n "$GENERATE_OPTIONS" ]; then
@@ -208,5 +215,9 @@ case $GROUNDER in
 
     dlv)
         run_dlv $experiment_dir $dataset_rules
+        ;;
+
+    lparse)
+        run_lparse $experiment_dir $dataset_rules
         ;;
 esac
