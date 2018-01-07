@@ -149,7 +149,7 @@ function generate_rules() {
 
 function grounder_to_format() {
     case $1 in
-        gringo)
+        gringo|dlv)
             echo "datalog"
             ;;
 
@@ -164,19 +164,24 @@ function grounder_to_format() {
 }
 
 function run_gringo() {
-    tmp=$(mktemp)
+    RUNS="$1/runs-gringo.txt"
 
-    cat $2 $3 > $tmp
-    $GROUNDERS/clingo/build/bin/clingo --text $tmp > $1/runs-gringo.txt
-    cat $1/runs-gringo.txt
+    $GROUNDERS/clingo/build/bin/clingo --text $2 > $RUNS
+    cat $RUNS
 }
 
 function run_swi_prolog() {
-    tmp=$(mktemp)
+    RUNS="$1/runs-swi-prolog.txt"
 
-    cat $2 $3 > $tmp
-    $GROUNDERS/swi-prolog/build/bin/swipl -s $tmp > $1/runs-swi-prolog.txt
-    cat $1/runs-swi-prolog.txt
+    $GROUNDERS/swi-prolog/build/bin/swipl -s $2 > $RUNS
+    cat $RUNS
+}
+
+function run_dlv() {
+    RUNS="$1/runs-dlv.txt"
+
+    $GROUNDERS/dlv/dlv -silent -nofacts -instantiate $2 > $RUNS
+    cat $RUNS
 }
 
 experiment_dir=$(setup_experiment)
@@ -189,13 +194,19 @@ if [ -n "$RULES_OPTIONS" ]; then
     rules=$(generate_rules $experiment_dir $dataset)
 fi
 
+dataset_rules=$(mktemp)
+cat $dataset $rules > $dataset_rules
 
 case $GROUNDER in
     gringo)
-        run_gringo $experiment_dir $dataset $rules
+        run_gringo $experiment_dir $dataset_rules
         ;;
 
     swi-prolog)
-        run_swi_prolog $experiment_dir $dataset $rules
+        run_swi_prolog $experiment_dir $dataset_rules
+        ;;
+
+    dlv)
+        run_dlv $experiment_dir $dataset_rules
         ;;
 esac
