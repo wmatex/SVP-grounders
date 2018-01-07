@@ -26,13 +26,13 @@ def parse_arguments():
     )
 
     parser.add_argument(
-        '-n', '--count', type=int, default=1,
+        '-n', '--count', type=int, default=0,
         help='Number of generated rules'
     )
 
     parser.add_argument(
         '-w', '--width', type=int, default=3,
-        help='Number of tables in the body'
+        help='Number of predicates in the body'
     )
 
     parser.add_argument(
@@ -42,7 +42,7 @@ def parse_arguments():
 
     parser.add_argument(
         '-u', '--unique', action='store_true',
-        help='Use unique variable names in duplicit tables'
+        help='Use unique variable names in duplicit body predicates'
     )
 
     parser.add_argument(
@@ -52,7 +52,17 @@ def parse_arguments():
 
     parser.add_argument(
         '-wg', '--weight', type=float, default=0.5,
-        help='Weight of the table with <min> columns'
+        help='Weight of the predicate with <min> terms'
+    )
+
+    parser.add_argument(
+        '-b', '--base-rules', type=int, default=1,
+        help='Number of generated base rules with only tables in body'
+    )
+
+    parser.add_argument(
+        '-r', '--rule-proportion', type=float, default=0,
+        help='Proportion of rules in body'
     )
 
     parser.add_argument(
@@ -72,7 +82,7 @@ class Rule:
     """
     Class with single rule definition
     """
-    def __init__(self, id, predicates, num_of_tables, first_item_weight=0.5):
+    def __init__(self, id, tables, rules, size_of_body, first_item_weight=0.5, rules_proportion=0.0):
         """
         :param id: Numeric id used for identifier generation
         :param parser: Instance of the 'Parser' class
@@ -80,34 +90,51 @@ class Rule:
         :param first_item_weight: Weight of the first item as required by :py:func:`weights.generate`
         """
         self._id = generate_identifier(id)
-        self.table_rules = []
-        self.head_symbols = []
+        self.body = []
+        self.head = []
 
-        self._create(predicates, num_of_tables, first_item_weight)
+        self._create(tables, rules, size_of_body, first_item_weight, rules_proportion)
 
-    def _create(self, predicates, num_of_tables, first_item_weight):
-        num_of_tables = min(num_of_tables, len(predicates))
+    def _create(self, tables, rules, size_of_body, first_item_weight, rules_proportion):
+        num_of_tables = min(size_of_body, len(tables))
 
-        tables = list(predicates)
-        tables.sort(key=lambda k: predicates[k]['arity'])
-        wgs = weights.generate(tables, first_item_weight)
+        tables_list = list(tables)
 
-        non_zero = sum(i > 0 for i in wgs)
-        num_of_tables = min(num_of_tables, non_zero)
-        tables = np.random.choice(tables, size=num_of_tables, p=wgs, replace=False)
-        self._tables = [predicates[t] for t in tables]
+        tables_list.sort(key=lambda k: tables[k]['arity'])
+        rules_list = sorted(rules, key=lambda k: len(k.head))
 
-    def _create_head(self, tables, duplicity, unique_names=False, all_body=False):
-        head_symbols = {}
+        wgs_tables = weights.generate(tables_list, first_item_weight)
+        wgs_rules = weights.generate(rules_list, first_item_weight)
 
-        for t in tables:
+        non_zero_tables = sum(i > 0 for i in wgs_tables)
+        num_of_tables = min(num_of_tables, non_zero_tables)
+        tables_list = np.random.choice(tables_list, size=num_of_tables, p=wgs_tables, replace=False)
+
+        self._tables = [tables[t] for t in tables_list]
+
+        non_zero_rules = sum(i > 0 for i in wgs_rules)
+        num_of_rules = min(non_zero_rules, num_of_tables*rules_proportion)
+        if num_of_rules > 0 and len(rules_list) > 0:
+            rules_list = np.random.choice(rules_list, size=num_of_rules, p=wgs_rules, replace=False)
+        else:
+            rules_list = []
+
+        self._rules = rules_list
+
+    def _create_head(self, duplicity, unique_names=False, all_body=False):
+        self._head_symbols = {}
+
+        for t in self._tables:
             n = 1
             if all_body:
                 n = t['arity'] - len(t['relations'])
-            head_symbols[t['name']] = head_symbols.get(t['name'], 0) + n
+            self._head_symbols[t['name']] = self._head_symbols.get(t['name'], 0) + n
+
+        for r in self._rules:
+            self._head_symbols.update(r._head_symbols)
 
         heads = []
-        for name, count in head_symbols.items():
+        for name, count in self._head_symbols.items():
             if unique_names:
                 for i in range(duplicity):
                     if i > 0:
@@ -126,11 +153,11 @@ class Rule:
         if dup > 0 and unique_names:
             suffix = "_" + str(dup)
 
-        for index in range(arity - len(relations)):
-            variables.append(prefix + str(index) + suffix)
-
-        for r in relations:
-            variables.append(r.upper() + "0" + suffix)
+        for index in range(arity):
+            if index in relations:
+                variables.append(relations[index].upper() + "0" + suffix)
+            else:
+                variables.append(prefix + str(index) + suffix)
 
         return variables
 
@@ -142,7 +169,7 @@ class Rule:
         :param boolean unique_names: Whether to use unique variable names for each duplicate body predicate
         :param boolean all_body: Whether to include all variables from the body predicates in the head of the rule
         """
-        self.head_symbols = self._create_head(self._tables, duplicity, unique_names, all_body)
+        self.head = self._create_head(duplicity, unique_names, all_body)
 
         for t in self._tables:
             prefix = t['name'].upper()
@@ -150,10 +177,16 @@ class Rule:
             for dup in range(duplicity):
                 variables = self._create_body(prefix, t['arity'], t['relations'], dup, unique_names)
 
-                self.table_rules.append({
+                self.body.append({
                     'name': t['name'],
                     'variables': variables
                 })
+
+        for r in self._rules:
+            self.body.append({
+                'name': "rule_" + r._id,
+                'variables': r.head
+            })
 
 
 if __name__ == "__main__":
@@ -162,9 +195,18 @@ if __name__ == "__main__":
     importer = convert.DatalogImporter(args.data, args.print)
 
     rules = []
-    for i in range(args.count):
-        r = Rule(i, importer.predicates, args.width, args.weight)
+    rules_predicates = []
+
+    for i in range(args.base_rules):
+        r = Rule(i, importer.predicates, [], args.width, args.weight, 0)
         r.generate(args.duplicity + 1, args.unique, args.all)
+
+        rules.append(r)
+
+    for i in range(args.count):
+        r = Rule(i+args.base_rules, importer.predicates, rules, args.width, args.weight, args.rule_proportion)
+        r.generate(args.duplicity + 1, args.unique, args.all)
+
         rules.append(r)
 
     exporter = None

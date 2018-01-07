@@ -37,22 +37,22 @@ class DatalogExporter(Exporter):
         print("% " + table._id + ":" + str(len(table._data[0])) + ":[", end="", file=self._file)
         rels = []
         for r in table._relations:
-            rels.append(r._id)
+            rels.append(table._relations[r]._id + ":" + str(r))
         print(",".join(rels) + "]", file=self._file)
 
         for row in table._data:
             print(table._id + "(" + ", ".join(row) + ").", file=self._file)
 
     def _export_rule(self, rule):
-        print("rule_" + rule._id + "(" + ", ".join(rule.head_symbols) + ") :- ", end="", file=self._file)
-        tables = [tr['name'] + "(" + ", ".join(tr['variables']) + ")" for tr in rule.table_rules]
-        print(", ".join(tables) + ".")
+        print("rule_" + rule._id + "(" + ", ".join(rule.head) + ") :- ", end="", file=self._file)
+        body = [tr['name'] + "(" + ", ".join(tr['variables']) + ")" for tr in rule.body]
+        print(", ".join(body) + ".")
 
 class PrologExporter(DatalogExporter):
     def _export_rule(self, rule):
         super()._export_rule(rule)
 
-        rule_string = "rule_" + rule._id + "(" + ",".join(rule.head_symbols) + ")"
+        rule_string = "rule_" + rule._id + "(" + ",".join(rule.head) + ")"
 
         print(":- findall(" + rule_string + ", " + rule_string + ", G), writeln(G).", file=self._file)
 
@@ -96,19 +96,22 @@ class Importer:
 
 class DatalogImporter(Importer):
     def _parse_atoms(self, line):
-        atom_info_reg = re.compile('(?P<name>[\w]+):\s*(?P<arity>[0-9]+):\s*\[(?P<relations>[\w,]*)\]')
+        atom_info_reg = re.compile('(?P<name>[\w]+):\s*(?P<arity>[0-9]+):\s*\[(?P<relations>[\w:0-9,]*)\]')
+        rel_info_reg = re.compile('(?P<name>[\w]+):(?P<pos>[0-9]+)')
         match = atom_info_reg.search(line)
 
         if match:
             predicate = {
                 'arity': int(match.group('arity')),
                 'name': match.group('name'),
-                'relations': []
+                'relations': {}
             }
 
             for atom in match.group('relations').split(','):
                 if atom:
-                    predicate['relations'].append(atom)
+                    match_rel = rel_info_reg.match(atom)
+                    if match_rel:
+                        predicate['relations'][int(match_rel.group('pos'))] = match_rel.group('name')
 
             self.predicates[match.group('name')] = predicate
 

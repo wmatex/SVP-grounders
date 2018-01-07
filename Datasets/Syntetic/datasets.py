@@ -45,10 +45,10 @@ class Table:
         self._id = generate_identifier(id)
         self._columns = columns
         self._data = [[generate_identifier(id, i*columns + j) for j in range(columns)] for i in range(rows)]
-        self._relations = []
+        self._relations = {}
 
     def add_relation(self, table):
-        self._relations.append(table)
+        self._relations[len(self._data[0])] = table
         for row in self._data:
             row.append(table.get_random_id())
 
