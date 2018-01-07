@@ -75,6 +75,11 @@ def parse_arguments():
         help='Type of exported file format'
     )
 
+    parser.add_argument(
+        '--data-format', default='datalog', choices=['datalog', 'sql'],
+        help='Type of data file'
+    )
+
     return parser.parse_args()
 
 
@@ -153,11 +158,13 @@ class Rule:
         if dup > 0 and unique_names:
             suffix = "_" + str(dup)
 
+        body_index = 0
         for index in range(arity):
             if index in relations:
                 variables.append(relations[index].upper() + "0" + suffix)
             else:
-                variables.append(prefix + str(index) + suffix)
+                variables.append(prefix + str(body_index) + suffix)
+                body_index += 1
 
         return variables
 
@@ -192,7 +199,11 @@ class Rule:
 if __name__ == "__main__":
     args = parse_arguments()
 
-    importer = convert.DatalogImporter(args.data, args.print)
+    importer = None
+    if args.data_format == 'datalog':
+        importer = convert.DatalogImporter(args.data, args.print)
+    elif args.data_format == 'sql':
+        importer = convert.SQLImporter(args.data, args.print)
 
     rules = []
     rules_predicates = []

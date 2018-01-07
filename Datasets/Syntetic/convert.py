@@ -2,7 +2,7 @@
 
 import sys
 import re
-
+import datasets
 
 class Exporter:
     def __init__(self, file=sys.stdout):
@@ -94,6 +94,7 @@ class Importer:
     def _parse(self, reprint):
         raise NotImplementedError
 
+
 class DatalogImporter(Importer):
     def _parse_atoms(self, line):
         atom_info_reg = re.compile('(?P<name>[\w]+):\s*(?P<arity>[0-9]+):\s*\[(?P<relations>[\w:0-9,]*)\]')
@@ -123,3 +124,84 @@ class DatalogImporter(Importer):
             if line[0] == '%':
                 self._parse_atoms(line)
 
+
+class SQLImporter(Importer):
+    def _parse(self, print_to_stdout):
+        table_def_reg = re.compile('CREATE TABLE `(?P<name>[^`]+)`\s* \(')
+        insert_reg = re.compile('INSERT INTO `(?P<name>[^`]+)` VALUES (?P<data>.*);')
+
+        data = {}
+
+        for line in self._file:
+            match = table_def_reg.search(line)
+            if match:
+                name = match.group('name').lower()
+                self.predicates[name] = self._table_def(name)
+                data[name] = []
+                continue
+
+            match = insert_reg.match(line)
+            if match:
+                name = match.group('name').lower()
+                data[name] += self._parse_data(name, match.group('data'))
+                continue
+
+        tables = {}
+        for table in data:
+            tables[table] = datasets.Table.from_data(table, data[table], {})
+
+        for table in data:
+            relations = {}
+            for r in self.predicates[table]['relations']:
+                relations[r] = tables[self.predicates[table]['relations'][r]]
+            tables[table]._relations = relations
+
+        self.tables = [tables[t] for t in tables]
+
+
+    def _parse_data(self, table, data):
+        row_data = []
+        rows = data.strip('()').split('),(')
+        for row in rows:
+            columns = row.split(',')
+            row_data.append([c.strip('\'"') for c in columns])
+
+        return row_data
+
+    def _table_def(self, name):
+        end_table_def = re.compile('\s*\).*;')
+        column_reg = re.compile('\s*`(?P<column>[^`]+)`')
+        relation_reg = re.compile('\s*CONSTRAINT .* FOREIGN KEY \(`(?P<col>[^`]+)`\) REFERENCES `(?P<table>[^`]+)`')
+
+        table_def = {
+            'name': name,
+            'arity': 0,
+            'relations': {}
+        }
+        columns = {}
+        col_index = 0
+
+        for line in self._file:
+            match = end_table_def.match(line)
+            if match:
+                return table_def
+
+            match = column_reg.match(line)
+            if match:
+                columns[match.group('column')] = col_index
+                col_index += 1
+                table_def['arity'] += 1
+                continue
+
+            match = relation_reg.match(line)
+            if match:
+                table_def['relations'][columns[match.group('col')]] = match.group('table')
+                table_def['arity'] += 1
+                continue
+
+if __name__ == "__main__":
+    with open(sys.argv[1], 'r') as f:
+        importer = SQLImporter(f, False)
+
+        exporter = DatalogExporter()
+        exporter.export(importer.tables)
