@@ -1,0 +1,489 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="neurologic" default="all">
+  
+  
+  <property file="neurologic.properties"/>
+  <!-- Uncomment the following property if no tests compilation is needed -->
+  <!-- 
+  <property name="skip.tests" value="true"/>
+   -->
+  
+  <!-- Compiler options -->
+  
+  <property name="compiler.debug" value="on"/>
+  <property name="compiler.generate.no.warnings" value="off"/>
+  <property name="compiler.args" value=""/>
+  <property name="compiler.max.memory" value="700m"/>
+  <patternset id="ignored.files">
+    <exclude name="**/*.hprof/**"/>
+    <exclude name="**/*.pyc/**"/>
+    <exclude name="**/*.pyo/**"/>
+    <exclude name="**/*.rbc/**"/>
+    <exclude name="**/*.yarb/**"/>
+    <exclude name="**/*~/**"/>
+    <exclude name="**/.DS_Store/**"/>
+    <exclude name="**/.git/**"/>
+    <exclude name="**/.hg/**"/>
+    <exclude name="**/.svn/**"/>
+    <exclude name="**/CVS/**"/>
+    <exclude name="**/__pycache__/**"/>
+    <exclude name="**/_svn/**"/>
+    <exclude name="**/vssver.scc/**"/>
+    <exclude name="**/vssver2.scc/**"/>
+  </patternset>
+  <patternset id="library.patterns">
+    <include name="*.egg"/>
+    <include name="*.jar"/>
+    <include name="*.ear"/>
+    <include name="*.swc"/>
+    <include name="*.war"/>
+    <include name="*.zip"/>
+    <include name="*.ane"/>
+  </patternset>
+  <patternset id="compiler.resources">
+    <exclude name="**/?*.java"/>
+    <exclude name="**/?*.form"/>
+    <exclude name="**/?*.class"/>
+    <exclude name="**/?*.groovy"/>
+    <exclude name="**/?*.scala"/>
+    <exclude name="**/?*.flex"/>
+    <exclude name="**/?*.kt"/>
+    <exclude name="**/?*.clj"/>
+    <exclude name="**/?*.aj"/>
+  </patternset>
+  
+  <!-- JDK definitions -->
+  
+  <property name="jdk.bin.1.8" value="${jdk.home.1.8}/bin"/>
+  <path id="jdk.classpath.1.8">
+    <fileset dir="${jdk.home.1.8}">
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/charsets.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/deploy.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/ext/cldrdata.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/ext/dnsns.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/ext/jaccess.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/ext/localedata.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/ext/nashorn.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/ext/sunec.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/ext/sunjce_provider.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/ext/sunpkcs11.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/ext/zipfs.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/javaws.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/jce.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/jsse.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/management-agent.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/plugin.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/resources.jar"/>
+      <include name="../../usr/lib/jvm/oracle-jdk-bin-1.8/jre/lib/rt.jar"/>
+    </fileset>
+  </path>
+  
+  <property name="project.jdk.home" value="${jdk.home.1.8}"/>
+  <property name="project.jdk.bin" value="${jdk.bin.1.8}"/>
+  <property name="project.jdk.classpath" value="jdk.classpath.1.8"/>
+  
+  
+  <!-- Project Libraries -->
+  
+  <path id="library.lib.classpath">
+    <pathelement location="${basedir}/LRNN/lib/auc.jar"/>
+    <pathelement location="${basedir}/LRNN/lib/commons-cli-1.2.jar"/>
+  </path>
+  
+  <!-- Modules -->
+  
+  
+  <!-- Module Utils -->
+  
+  <dirname property="module.utils.basedir" file="${ant.file}"/>
+  
+  
+  <property name="module.jdk.home.utils" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.utils" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.utils" value="${project.jdk.classpath}"/>
+  
+  <property name="compiler.args.utils" value="-encoding UTF-8 -source 1.8 -target 1.8 ${compiler.args}"/>
+  
+  <property name="utils.output.dir" value="${module.utils.basedir}/out/production/Utils"/>
+  <property name="utils.testoutput.dir" value="${module.utils.basedir}/out/test/Utils"/>
+  
+  <path id="utils.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="utils.module.production.classpath">
+    <path refid="${module.jdk.classpath.utils}"/>
+  </path>
+  
+  <path id="utils.runtime.production.module.classpath">
+    <pathelement location="${utils.output.dir}"/>
+  </path>
+  
+  <path id="utils.module.classpath">
+    <path refid="${module.jdk.classpath.utils}"/>
+    <pathelement location="${utils.output.dir}"/>
+  </path>
+  
+  <path id="utils.runtime.module.classpath">
+    <pathelement location="${utils.testoutput.dir}"/>
+    <pathelement location="${utils.output.dir}"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.utils">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.utils">
+    <patternset refid="excluded.from.module.utils"/>
+  </patternset>
+  
+  <path id="utils.module.sourcepath">
+    <dirset dir="${module.utils.basedir}/Utils">
+      <include name="src"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.utils" depends="compile.module.utils.production,compile.module.utils.tests" description="Compile module Utils"/>
+  
+  <target name="compile.module.utils.production" description="Compile module Utils; production classes">
+    <mkdir dir="${utils.output.dir}"/>
+    <javac destdir="${utils.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.utils}/javac">
+      <compilerarg line="${compiler.args.utils}"/>
+      <bootclasspath refid="utils.module.bootclasspath"/>
+      <classpath refid="utils.module.production.classpath"/>
+      <src refid="utils.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.utils"/>
+    </javac>
+    
+    <copy todir="${utils.output.dir}">
+      <fileset dir="${module.utils.basedir}/Utils/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.utils.tests" depends="compile.module.utils.production" description="compile module Utils; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.utils" description="cleanup module">
+    <delete dir="${utils.output.dir}"/>
+    <delete dir="${utils.testoutput.dir}"/>
+  </target>
+  
+  
+  <!-- Module Logic -->
+  
+  <dirname property="module.logic.basedir" file="${ant.file}"/>
+  
+  
+  <property name="module.jdk.home.logic" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.logic" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.logic" value="${project.jdk.classpath}"/>
+  
+  <property name="compiler.args.logic" value="-encoding UTF-8 -source 1.8 -target 1.8 ${compiler.args}"/>
+  
+  <property name="logic.output.dir" value="${module.logic.basedir}/out/production/Logic"/>
+  <property name="logic.testoutput.dir" value="${module.logic.basedir}/out/test/Logic"/>
+  
+  <path id="logic.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="logic.module.production.classpath">
+    <path refid="${module.jdk.classpath.logic}"/>
+    <pathelement location="${utils.output.dir}"/>
+  </path>
+  
+  <path id="logic.runtime.production.module.classpath">
+    <pathelement location="${logic.output.dir}"/>
+    <path refid="utils.runtime.production.module.classpath"/>
+  </path>
+  
+  <path id="logic.module.classpath">
+    <path refid="${module.jdk.classpath.logic}"/>
+    <pathelement location="${logic.output.dir}"/>
+    <pathelement location="${utils.testoutput.dir}"/>
+    <pathelement location="${utils.output.dir}"/>
+  </path>
+  
+  <path id="logic.runtime.module.classpath">
+    <pathelement location="${logic.testoutput.dir}"/>
+    <pathelement location="${logic.output.dir}"/>
+    <path refid="utils.runtime.module.classpath"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.logic">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.logic">
+    <patternset refid="excluded.from.module.logic"/>
+  </patternset>
+  
+  <path id="logic.module.sourcepath">
+    <dirset dir="${module.logic.basedir}/Logic">
+      <include name="src"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.logic" depends="compile.module.logic.production,compile.module.logic.tests" description="Compile module Logic"/>
+  
+  <target name="compile.module.logic.production" depends="compile.module.utils" description="Compile module Logic; production classes">
+    <mkdir dir="${logic.output.dir}"/>
+    <javac destdir="${logic.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.logic}/javac">
+      <compilerarg line="${compiler.args.logic}"/>
+      <bootclasspath refid="logic.module.bootclasspath"/>
+      <classpath refid="logic.module.production.classpath"/>
+      <src refid="logic.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.logic"/>
+    </javac>
+    
+    <copy todir="${logic.output.dir}">
+      <fileset dir="${module.logic.basedir}/Logic/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.logic.tests" depends="compile.module.logic.production" description="compile module Logic; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.logic" description="cleanup module">
+    <delete dir="${logic.output.dir}"/>
+    <delete dir="${logic.testoutput.dir}"/>
+  </target>
+  
+  
+  <!-- Module LRNN -->
+  
+  <dirname property="module.lrnn.basedir" file="${ant.file}"/>
+  
+  
+  <property name="module.jdk.home.lrnn" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.lrnn" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.lrnn" value="${project.jdk.classpath}"/>
+  
+  <property name="compiler.args.lrnn" value="-encoding UTF-8 -source 1.8 -target 1.8 ${compiler.args}"/>
+  
+  <property name="lrnn.output.dir" value="${module.lrnn.basedir}/out/production/LRNN"/>
+  <property name="lrnn.testoutput.dir" value="${module.lrnn.basedir}/out/test/LRNN"/>
+  
+  <path id="lrnn.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="lrnn.module.production.classpath">
+    <path refid="${module.jdk.classpath.lrnn}"/>
+    <path refid="library.lib.classpath"/>
+    <pathelement location="${logic.output.dir}"/>
+    <pathelement location="${utils.output.dir}"/>
+  </path>
+  
+  <path id="lrnn.runtime.production.module.classpath">
+    <pathelement location="${lrnn.output.dir}"/>
+    <path refid="library.lib.classpath"/>
+    <path refid="logic.runtime.production.module.classpath"/>
+    <path refid="utils.runtime.production.module.classpath"/>
+  </path>
+  
+  <path id="lrnn.module.classpath">
+    <path refid="${module.jdk.classpath.lrnn}"/>
+    <pathelement location="${lrnn.output.dir}"/>
+    <path refid="library.lib.classpath"/>
+    <pathelement location="${logic.testoutput.dir}"/>
+    <pathelement location="${logic.output.dir}"/>
+    <pathelement location="${utils.testoutput.dir}"/>
+    <pathelement location="${utils.output.dir}"/>
+  </path>
+  
+  <path id="lrnn.runtime.module.classpath">
+    <pathelement location="${lrnn.testoutput.dir}"/>
+    <pathelement location="${lrnn.output.dir}"/>
+    <path refid="library.lib.classpath"/>
+    <path refid="logic.runtime.module.classpath"/>
+    <path refid="utils.runtime.module.classpath"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.lrnn">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.lrnn">
+    <patternset refid="excluded.from.module.lrnn"/>
+  </patternset>
+  
+  <path id="lrnn.module.sourcepath">
+    <dirset dir="${module.lrnn.basedir}/LRNN">
+      <include name="src/main/java"/>
+      <include name="src"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.lrnn" depends="compile.module.lrnn.production,compile.module.lrnn.tests" description="Compile module LRNN"/>
+  
+  <target name="compile.module.lrnn.production" depends="compile.module.logic,compile.module.utils" description="Compile module LRNN; production classes">
+    <mkdir dir="${lrnn.output.dir}"/>
+    <javac destdir="${lrnn.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.lrnn}/javac">
+      <compilerarg line="${compiler.args.lrnn}"/>
+      <bootclasspath refid="lrnn.module.bootclasspath"/>
+      <classpath refid="lrnn.module.production.classpath"/>
+      <src refid="lrnn.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.lrnn"/>
+    </javac>
+    
+    <copy todir="${lrnn.output.dir}">
+      <fileset dir="${module.lrnn.basedir}/LRNN/src/main/java">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+      <fileset dir="${module.lrnn.basedir}/LRNN/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.lrnn.tests" depends="compile.module.lrnn.production" description="compile module LRNN; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.lrnn" description="cleanup module">
+    <delete dir="${lrnn.output.dir}"/>
+    <delete dir="${lrnn.testoutput.dir}"/>
+  </target>
+  
+  
+  <!-- Module TreeLiker -->
+  
+  <dirname property="module.treeliker.basedir" file="${ant.file}"/>
+  
+  
+  <property name="module.jdk.home.treeliker" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.treeliker" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.treeliker" value="${project.jdk.classpath}"/>
+  
+  <property name="compiler.args.treeliker" value="-encoding UTF-8 -source 1.8 -target 1.8 ${compiler.args}"/>
+  
+  <property name="treeliker.output.dir" value="${module.treeliker.basedir}/out/production/TreeLiker"/>
+  <property name="treeliker.testoutput.dir" value="${module.treeliker.basedir}/out/test/TreeLiker"/>
+  
+  <path id="treeliker.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="treeliker.module.production.classpath">
+    <path refid="${module.jdk.classpath.treeliker}"/>
+    <pathelement location="${logic.output.dir}"/>
+    <pathelement location="${utils.output.dir}"/>
+  </path>
+  
+  <path id="treeliker.runtime.production.module.classpath">
+    <pathelement location="${treeliker.output.dir}"/>
+    <path refid="logic.runtime.production.module.classpath"/>
+    <path refid="utils.runtime.production.module.classpath"/>
+  </path>
+  
+  <path id="treeliker.module.classpath">
+    <path refid="${module.jdk.classpath.treeliker}"/>
+    <pathelement location="${treeliker.output.dir}"/>
+    <pathelement location="${logic.testoutput.dir}"/>
+    <pathelement location="${logic.output.dir}"/>
+    <pathelement location="${utils.testoutput.dir}"/>
+    <pathelement location="${utils.output.dir}"/>
+  </path>
+  
+  <path id="treeliker.runtime.module.classpath">
+    <pathelement location="${treeliker.testoutput.dir}"/>
+    <pathelement location="${treeliker.output.dir}"/>
+    <path refid="logic.runtime.module.classpath"/>
+    <path refid="utils.runtime.module.classpath"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.treeliker">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.treeliker">
+    <patternset refid="excluded.from.module.treeliker"/>
+  </patternset>
+  
+  <path id="treeliker.module.sourcepath">
+    <dirset dir="${module.treeliker.basedir}/TreeLiker">
+      <include name="src"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.treeliker" depends="compile.module.treeliker.production,compile.module.treeliker.tests" description="Compile module TreeLiker"/>
+  
+  <target name="compile.module.treeliker.production" depends="compile.module.logic,compile.module.utils" description="Compile module TreeLiker; production classes">
+    <mkdir dir="${treeliker.output.dir}"/>
+    <javac destdir="${treeliker.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.treeliker}/javac">
+      <compilerarg line="${compiler.args.treeliker}"/>
+      <bootclasspath refid="treeliker.module.bootclasspath"/>
+      <classpath refid="treeliker.module.production.classpath"/>
+      <src refid="treeliker.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.treeliker"/>
+    </javac>
+    
+    <copy todir="${treeliker.output.dir}">
+      <fileset dir="${module.treeliker.basedir}/TreeLiker/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.treeliker.tests" depends="compile.module.treeliker.production" description="compile module TreeLiker; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.treeliker" description="cleanup module">
+    <delete dir="${treeliker.output.dir}"/>
+    <delete dir="${treeliker.testoutput.dir}"/>
+  </target>
+  
+  <target name="init" description="Build initialization">
+    <!-- Perform any build initialization in this target -->
+  </target>
+  
+  <target name="clean" depends="clean.module.utils, clean.module.logic, clean.module.lrnn, clean.module.treeliker, clean.artifact.neurologic:jar" description="cleanup all"/>
+  
+  <target name="build.modules" depends="init, clean, compile.module.utils, compile.module.logic, compile.module.lrnn, compile.module.treeliker" description="build all modules"/>
+  
+  <target name="init.artifacts">
+    <property name="artifacts.temp.dir" value="${basedir}/__artifacts_temp"/>
+    <property name="artifact.output.neurologic:jar" value="${basedir}/out/artifacts/neurologic_jar"/>
+    <mkdir dir="${artifacts.temp.dir}"/>
+    <property name="temp.jar.path.neurologic.jar" value="${artifacts.temp.dir}/neurologic.jar"/>
+  </target>
+  
+  <target name="clean.artifact.neurologic:jar" description="clean neurologic:jar artifact output">
+    <delete dir="${artifact.output.neurologic:jar}"/>
+  </target>
+  
+  <target name="artifact.neurologic:jar" depends="init.artifacts, compile.module.treeliker, compile.module.logic, compile.module.utils, compile.module.lrnn" description="Build &#39;neurologic:jar&#39; artifact">
+    <mkdir dir="${artifact.output.neurologic:jar}"/>
+    <jar destfile="${temp.jar.path.neurologic.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
+      <zipfileset file="${basedir}/out/artifacts/neurologic_jar/META-INF/MANIFEST.MF" prefix="META-INF"/>
+      <zipfileset dir="${treeliker.output.dir}"/>
+      <zipfileset dir="${logic.output.dir}"/>
+      <zipfileset dir="${utils.output.dir}"/>
+      <zipfileset dir="${lrnn.output.dir}"/>
+    </jar>
+    <copy file="${temp.jar.path.neurologic.jar}" tofile="${artifact.output.neurologic:jar}/neurologic.jar"/>
+    <copy file="${basedir}/LRNN/lib/auc.jar" tofile="${artifact.output.neurologic:jar}/auc.jar"/>
+    <copy file="${basedir}/LRNN/lib/commons-cli-1.2.jar" tofile="${artifact.output.neurologic:jar}/commons-cli-1.2.jar"/>
+  </target>
+  
+  <target name="build.all.artifacts" depends="artifact.neurologic:jar" description="Build all artifacts">
+    
+    <!-- Delete temporary files -->
+    <delete dir="${artifacts.temp.dir}"/>
+  </target>
+  
+  <target name="all" depends="build.modules, build.all.artifacts" description="build all"/>
+</project>

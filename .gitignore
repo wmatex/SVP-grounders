@@ -1,5 +1,6 @@
 *.pdf
 .idea
+.DS_Store
 
 Project
 Datasets/**/*.data
@@ -12,6 +13,11 @@ _build
 /Grounders/dlv
 /Grounders/lparse/*
 !/Grounders/lparse/patch.sh
+
+/Grounders/neurologic/out/production
+/Grounders/neurologic/out/artifacts/**/*.jar
+/Grounders/neurologic/LRNN/lrnn_results
+
 
 .latex.json
 Tex/**/*.gz
