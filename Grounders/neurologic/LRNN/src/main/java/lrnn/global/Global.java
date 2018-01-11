@@ -62,12 +62,12 @@ public final class Global {
 
     public static boolean drawing = false;
     public static boolean longName = false;
-    public static boolean saveGroundedDataset = false;
+    public static boolean saveGroundedDataset = true;
     public static boolean loadGroundedDataset = false;
 
     public static boolean uncompressedLambda = true;
 
-    public static boolean fastVersion = true;
+    public static boolean fastVersion = false;
     public static boolean memoryLight = false;  //saves 60% by removing groundKL structures (keeps only neural), makes sense with fastVersion ON only
     public static boolean molecularTemplates = true;
     public static boolean NLPtemplate = false;
