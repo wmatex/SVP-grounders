@@ -196,35 +196,38 @@ class Rule:
             })
 
 
-if __name__ == "__main__":
-    args = parse_arguments()
-
+def run(parameters):
     importer = None
-    if args.data_format == 'datalog':
-        importer = convert.DatalogImporter(args.data, args.print)
-    elif args.data_format == 'sql':
-        importer = convert.SQLImporter(args.data, args.print)
+    if parameters['data_format'] == 'datalog':
+        importer = convert.DatalogImporter(parameters['data'], parameters['print'])
+    elif parameters['data_format'] == 'sql':
+        importer = convert.SQLImporter(parameters['data'], parameters['print'])
 
     rules = []
-    rules_predicates = []
 
-    for i in range(args.base_rules):
-        r = Rule(i, importer.predicates, [], args.width, args.weight, 0)
-        r.generate(args.duplicity + 1, args.unique, args.all)
+    for i in range(parameters['base_rules']):
+        r = Rule(i, importer.predicates, [], parameters['width'], parameters['weight'], 0)
+        r.generate(parameters['duplicity'] + 1, parameters['unique'], parameters['all'])
 
         rules.append(r)
 
-    for i in range(args.count):
-        r = Rule(i+args.base_rules, importer.predicates, rules, args.width, args.weight, args.rule_proportion)
-        r.generate(args.duplicity + 1, args.unique, args.all)
+    for i in range(parameters['count']):
+        r = Rule(i+parameters['base_rules'], importer.predicates, rules, parameters['width'], parameters['weight'], parameters['rule_proportion'])
+        r.generate(parameters['duplicity'] + 1, parameters['unique'], parameters['all'])
 
         rules.append(r)
 
     exporter = None
-    if args.type == 'datalog':
+    if parameters['type'] == 'datalog':
         exporter = convert.DatalogExporter()
-    elif args.type == 'prolog':
+    elif parameters['type'] == 'prolog':
         exporter = convert.PrologExporter()
 
     exporter.export(rules)
+
+
+if __name__ == "__main__":
+    args = parse_arguments()
+    run(vars(args))
+
 

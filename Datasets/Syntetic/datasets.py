@@ -68,23 +68,18 @@ class Table:
         rows = len(self._data)
         return self._data[random.randint(0, rows-1)][0]
 
-
-if __name__ == "__main__":
-    args = parse_arguments()
-
+def run(parameters):
     tables = []
-    rules = []
-    max_columns = args.max_columns
-    min_columns = args.min_columns
+    max_columns = parameters['max_columns']
+    min_columns = parameters['min_columns']
 
-    cols = 1
-    k = (max_columns - min_columns)/(args.tables - 1)
-    for t in range(args.tables):
-        table = Table(t, round(k*t + min_columns), args.facts)
+    k = (max_columns - min_columns)/(parameters['tables - 1'])
+    for t in range(parameters['tables']):
+        table = Table(t, round(k*t + min_columns), parameters['facts'])
         tables.append(table)
 
     random.seed(0)
-    num_relations = min(args.relations, args.tables**2)
+    num_relations = min(parameters['relations'], parameters['tables']**2)
     pairs = itertools.product(tables, tables)
     pairs = random.sample(list(pairs), num_relations)
 
@@ -93,3 +88,8 @@ if __name__ == "__main__":
 
     exporter = convert.DatalogExporter()
     exporter.export(tables)
+
+if __name__ == "__main__":
+    args = parse_arguments()
+    run(vars(args))
+
