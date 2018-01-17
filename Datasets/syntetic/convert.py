@@ -1,8 +1,6 @@
-#!/usr/bin/env python3
-
 import sys
 import re
-import datasets
+from syntetic import datasets
 
 class Exporter:
     def __init__(self, file=sys.stdout):
@@ -29,7 +27,10 @@ class Exporter:
         raise NotImplementedError
 
     def _finalize(self, values):
-        pass
+        try:
+            self._file.close()
+        except ValueError:
+            pass
 
 
 class DatalogExporter(Exporter):
@@ -46,7 +47,7 @@ class DatalogExporter(Exporter):
     def _export_rule(self, rule):
         print("rule_" + rule._id + "(" + ", ".join(rule.head) + ") :- ", end="", file=self._file)
         body = [tr['name'] + "(" + ", ".join(tr['variables']) + ")" for tr in rule.body]
-        print(", ".join(body) + ".")
+        print(", ".join(body) + ".", file=self._file)
 
 class PrologExporter(DatalogExporter):
     def _export_rule(self, rule):
@@ -58,6 +59,7 @@ class PrologExporter(DatalogExporter):
 
     def _finalize(self, values):
         print(":- halt.", file=self._file)
+        super()._finalize(values)
 
 
 class Importer:

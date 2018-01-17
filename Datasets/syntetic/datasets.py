@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
-
 import argparse
 import random
+import sys
 import itertools
-from utils import generate_identifier
-import convert
+from syntetic.utils import generate_identifier
+from syntetic import convert
 
 random.seed(0)
 
@@ -35,6 +34,11 @@ def parse_arguments():
     parser.add_argument(
         '-mi', '--min-columns', type=int, default=1,
         help='Minimum number of table columns'
+    )
+
+    parser.add_argument(
+        '--output', type=argparse.FileType('w'), default=sys.stdout,
+        help="Output file"
     )
 
     return parser.parse_args()
@@ -73,7 +77,7 @@ def run(parameters):
     max_columns = parameters['max_columns']
     min_columns = parameters['min_columns']
 
-    k = (max_columns - min_columns)/(parameters['tables - 1'])
+    k = (max_columns - min_columns)/(parameters['tables'] - 1)
     for t in range(parameters['tables']):
         table = Table(t, round(k*t + min_columns), parameters['facts'])
         tables.append(table)
@@ -86,7 +90,7 @@ def run(parameters):
     for t1, t2 in pairs:
         t1.add_relation(t2)
 
-    exporter = convert.DatalogExporter()
+    exporter = convert.DatalogExporter(file=parameters['output'])
     exporter.export(tables)
 
 if __name__ == "__main__":

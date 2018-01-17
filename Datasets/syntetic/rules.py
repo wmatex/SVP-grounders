@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 Create rules from defined datasets based on provided features.
 """
@@ -8,9 +6,9 @@ import random
 import argparse
 import sys
 import numpy as np
-import weights
-import convert
-from utils import generate_identifier
+from syntetic import weights
+from syntetic import convert
+from syntetic.utils import generate_identifier
 
 random.seed(0)
 np.random.seed(0)
@@ -78,6 +76,11 @@ def parse_arguments():
     parser.add_argument(
         '--data-format', default='datalog', choices=['datalog', 'sql'],
         help='Type of data file'
+    )
+
+    parser.add_argument(
+        '--output', type=argparse.FileType('w'), default=sys.stdout,
+        help="Output file"
     )
 
     return parser.parse_args()
@@ -219,9 +222,9 @@ def run(parameters):
 
     exporter = None
     if parameters['type'] == 'datalog':
-        exporter = convert.DatalogExporter()
+        exporter = convert.DatalogExporter(file=parameters['output'])
     elif parameters['type'] == 'prolog':
-        exporter = convert.PrologExporter()
+        exporter = convert.PrologExporter(file=parameters['output'])
 
     exporter.export(rules)
 
