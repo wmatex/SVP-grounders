@@ -121,7 +121,7 @@ class Rule:
         self._tables = [tables[t] for t in tables_list]
 
         non_zero_rules = sum(i > 0 for i in wgs_rules)
-        num_of_rules = min(non_zero_rules, num_of_tables*rules_proportion)
+        num_of_rules = min(non_zero_rules, int(num_of_tables*rules_proportion))
         if num_of_rules > 0 and len(rules_list) > 0:
             rules_list = np.random.choice(rules_list, size=num_of_rules, p=wgs_rules, replace=False)
         else:
