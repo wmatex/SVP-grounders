@@ -26,7 +26,8 @@ class Runner:
     @staticmethod
     def _setup(experiment_dir, file_prefix, make_dir, parameters, configuration):
         if len(parameters) < 1:
-            if os.path.isfile(os.path.join(experiment_dir, file_prefix + '-result.txt')):
+            if os.path.isfile(os.path.join(experiment_dir, file_prefix + '-result.txt')) or \
+                os.path.isfile(os.path.join(experiment_dir, file_prefix + '-result.txt.gz')):
                 return None, None, None
             else:
                 return experiment_dir, file_prefix, configuration
