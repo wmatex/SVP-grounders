@@ -6,9 +6,11 @@ import time
 import subprocess
 import os
 import numpy as np
-import signal
 import gzip
 import shutil
+import queue
+import threading
+import argparse
 
 def gzip_file(filename):
     with open(filename, 'rb') as f_in:
@@ -43,7 +45,7 @@ class Runner:
             if make_dir > 0:
                 experiment_dir = os.path.join(experiment_dir, parameters[0]['param'], str(parameters[0]['value']))
                 if not os.path.isdir(experiment_dir):
-                    os.makedirs(experiment_dir)
+                    os.makedirs(experiment_dir, exist_ok=True)
             else:
                 file_prefix += "[{0}={1}]".format(parameters[0]['param'], parameters[0]['value'])
 
@@ -100,7 +102,7 @@ class Runner:
             run_time = ""
             try:
                 start = time.perf_counter()
-                subprocess.run(command, stdout=out_f, timeout=300)
+                subprocess.run(command, stdout=out_f, timeout=600)
                 end = time.perf_counter()
                 run_time = "{0:.3f}".format(end - start)
             except subprocess.TimeoutExpired:
@@ -123,6 +125,21 @@ class GringoRunner(Runner):
         return "Gringo"
 
 
+class Consumer(threading.Thread):
+    def __init__(self, grid_search, queue):
+        super().__init__()
+        self._grid_search = grid_search
+        self._queue = queue
+
+    def run(self):
+        while not self._grid_search.stopped:
+            configuration = self._queue.get()
+            if configuration[-1]['param'] == 'runner' and isinstance(configuration[-1]['value'], Runner):
+                configuration[-1]['value'].run_experiment(self._grid_search._exp_dir, self._grid_search._max_dirs, configuration)
+            else:
+                print("No runner for: ", configuration)
+
+
 class GridSearch:
     def __init__(self, parameters, max_dirs):
         self._parameters = parameters
@@ -142,47 +159,57 @@ class GridSearch:
             return
 
         if index >= len(self._parameters):
-            return self._run_configuration(configuration)
-
-        for param in self._parameters[index].get_options():
-            self._generate_configuration(index+1, configuration + [param])
-
-    def _run_configuration(self, configuration):
-        if configuration[-1]['param'] == 'runner' and isinstance(configuration[-1]['value'], Runner):
-            configuration[-1]['value'].run_experiment(self._exp_dir, self._max_dirs, configuration)
+            yield configuration
         else:
-            print("No runner for: ", configuration)
+            for param in self._parameters[index].get_options():
+                yield from self._generate_configuration(index+1, configuration + [param])
 
-    def run(self):
-        self._generate_configuration(0, [])
+    def run(self, num_threads):
+        self._queue = queue.Queue(maxsize=num_threads)
+        consumers = [Consumer(self, self._queue) for i in range(num_threads)]
+
+        for consumer in consumers:
+            consumer.start()
+
+        try:
+            for configuration in self._generate_configuration(0, []):
+                self._queue.put(configuration)
+        except KeyboardInterrupt:
+            pass
+
+        self.stopped = True
+        for consumer in consumers:
+            consumer.join()
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser("Runs grid search in defined parameter space")
+    parser.add_argument(
+        "-t", "--threads", type=int, default=1,
+        help="Spawn N threads"
+    )
+
+    args = parser.parse_args()
 
     grid_search = GridSearch([
-        Parameter('tables', range(2, 100, 5)),
-        Parameter('facts', range(10, 1000, 100)),
-        Parameter('base_rules', range(1, 100, 20)),
-        Parameter('count', range(0, 20, 5)),
+        Parameter('tables', [10, 50, 100]),
+        Parameter('facts', [10, 500, 1000]),
+        Parameter('base_rules', [10, 50, 100]),
+        Parameter('count', [1, 3, 10, 20]),
         Parameter('rule_proportion', np.linspace(0, 1, 5)),
-        Parameter('relations', [10]),
-        Parameter('min_columns', [1]),
-        Parameter('max_columns', [5]),
-        Parameter('width', [3]),
-        Parameter('weight', [0.5]),
-        Parameter('duplicity', [0]),
-        Parameter('unique', [False]),
-        Parameter('all', [False]),
+        Parameter('relations', [10, 50, 100]),
+        Parameter('min_columns', [1, 5, 10]),
+        Parameter('max_columns', [5, 10, 30]),
+        Parameter('width', [1, 20, 50]),
+        Parameter('weight', np.linspace(0, 1, 5)),
+        Parameter('duplicity', [0, 1, 5]),
+        Parameter('unique', [False, True]),
+        Parameter('all', [False, True]),
         Parameter('runner', [
             GringoRunner(),
         ]),
     ],
     5)
 
-    def signal_handler(signum, frame):
-        grid_search.stopped = True
-
-    signal.signal(signal.SIGINT, signal_handler)
-
-    grid_search.run()
+    grid_search.run(args.threads)
     print("All done")
