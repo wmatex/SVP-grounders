@@ -5,6 +5,7 @@ from syntetic import rules
 import time
 import subprocess
 import os
+import sys
 import numpy as np
 import gzip
 import shutil
@@ -106,6 +107,7 @@ class Runner:
                 end = time.perf_counter()
                 run_time = "{0:.3f}".format(end - start)
             except subprocess.TimeoutExpired:
+                print("Timeout expired", file=sys.stderr)
                 run_time = "Timeout expired"
 
             with open(os.path.join(experiment_dir, file_prefix + '-result.txt'), 'w') as res_f:
