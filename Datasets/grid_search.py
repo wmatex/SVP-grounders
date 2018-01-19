@@ -7,7 +7,14 @@ import subprocess
 import os
 import numpy as np
 import signal
+import gzip
+import shutil
 
+def gzip_file(filename):
+    with open(filename, 'rb') as f_in:
+        with gzip.open(filename + '.gz', 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+            os.remove(filename)
 
 class Parameter:
     def __init__(self, name, options):
@@ -80,6 +87,8 @@ class Runner:
         if command:
             print("Running {0} for: {1}/{2}".format(self.__str__(), experiment_dir, file_prefix))
             self._run_process(command, experiment_dir, file_prefix)
+            gzip_file(dataset_output)
+            gzip_file(rules_output)
 
     def _generate_command(self, dataset, rules):
         return None
@@ -100,6 +109,7 @@ class Runner:
             with open(os.path.join(experiment_dir, file_prefix + '-result.txt'), 'w') as res_f:
                 print("Time: {}".format(run_time), file=res_f)
 
+        gzip_file(output)
 
 
 class GringoRunner(Runner):
