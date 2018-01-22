@@ -98,22 +98,18 @@ class Runner:
 
 
     def _run_process(self, command, experiment_dir, file_prefix):
-        output = os.path.join(experiment_dir, file_prefix + '-output.txt')
-        with open(output, 'w') as out_f:
-            run_time = ""
-            try:
-                start = time.perf_counter()
-                subprocess.run(command, stdout=out_f, timeout=600)
-                end = time.perf_counter()
-                run_time = "{0:.3f}".format(end - start)
-            except subprocess.TimeoutExpired:
-                print("Timeout expired", file=sys.stderr)
-                run_time = "Timeout expired"
+        run_time = ""
+        try:
+            start = time.perf_counter()
+            subprocess.run(command, stdout=subprocess.DEVNULL, timeout=600)
+            end = time.perf_counter()
+            run_time = "{0:.3f}".format(end - start)
+        except subprocess.TimeoutExpired:
+            print("Timeout expired", file=sys.stderr)
+            run_time = "Timeout expired"
 
-            with open(os.path.join(experiment_dir, file_prefix + '-result.txt'), 'w') as res_f:
-                print("Time: {}".format(run_time), file=res_f)
-
-        gzip_file(output)
+        with open(os.path.join(experiment_dir, file_prefix + '-result.txt'), 'w') as res_f:
+            print("Time: {}".format(run_time), file=res_f)
 
 
 class GringoRunner(Runner):
