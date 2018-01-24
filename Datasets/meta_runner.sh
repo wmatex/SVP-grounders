@@ -23,7 +23,7 @@ cd $SCRATCHDIR/Datasets
 module add python36-modules-gcc
 
 # Compute
-./grid-search.py -t 4 >> experiments/grid-search/result.out
+./grid_search.py -t 4 >> experiments/grid-search/result.out
 
 # Sync computed results
 sync_result || export CLEAN_SCRATCH=false # copies result to your input data directory. The result will not be removed if the copying fails.
