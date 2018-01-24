@@ -18,9 +18,9 @@ GRID_DATA="Datasets/experiments/grid-search"
 rsync -az $DATADIR/SVP-grounders/ $SCRATCHDIR/
 
 # Switch to the scratch dir
-cd $SCRATCHDIR/SVP-grounders/Datasets
+cd $SCRATCHDIR/Datasets
 
-module add python34-modules-intel
+module add python36-modules-gcc
 
 # Compute
 ./grid-search -t 4 >> experiments/grid-search/result.out
