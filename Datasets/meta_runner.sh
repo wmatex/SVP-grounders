@@ -20,6 +20,8 @@ rsync -az $DATADIR/SVP-grounders/ $SCRATCHDIR/
 # Switch to the scratch dir
 cd $SCRATCHDIR/SVP-grounders/Datasets
 
+module add python34-modules-intel
+
 # Compute
 ./grid-search -t 4 >> experiments/grid-search/result.out
 
