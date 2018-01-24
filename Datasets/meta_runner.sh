@@ -15,7 +15,7 @@ DATADIR="/storage/praha1/home/wmatex/SVP-grounders"
 GRID_DATA="Datasets/experiments/grid-search"
 
 # Prepare data
-rsync -az $DATADIR/SVP-grounders/ $SCRATCHDIR/
+rsync -az $DATADIR/ $SCRATCHDIR/
 
 # Switch to the scratch dir
 cd $SCRATCHDIR/Datasets
