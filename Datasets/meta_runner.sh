@@ -2,7 +2,7 @@
 
 #PBS -N DP-Grounders
 #PBS -l select=1:ncpus=4:mem=128gb:scratch_local=20gb
-#PBS -l walltime=4:00:00
+#PBS -l walltime=8:00:00
 #PBS -j oe
 #PBS -m e
 
