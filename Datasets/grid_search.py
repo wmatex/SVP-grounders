@@ -59,10 +59,10 @@ class Runner:
             return Runner._setup(experiment_dir, file_prefix, make_dir - 1, parameters[1:], configuration)
 
 
-    def run_experiment(self, experiment_dir, max_dirs, parameters):
+    def run_experiment(self, experiment_dir, max_dirs, parameters, prefix):
         experiment_dir, file_prefix, configuration = Runner._setup(experiment_dir, '', max_dirs, parameters, {})
         if experiment_dir:
-            self._run(experiment_dir, file_prefix, configuration)
+            self._run(experiment_dir, file_prefix, configuration, prefix)
 
 
     def _alter_rules_config(self, config):
@@ -71,7 +71,7 @@ class Runner:
     def __str__(self):
         return "Runner"
 
-    def _run(self, experiment_dir, file_prefix, configuration):
+    def _run(self, experiment_dir, file_prefix, configuration, prefix):
         dataset_config = configuration.copy()
         dataset_output = os.path.join(experiment_dir, file_prefix + '-dataset.txt')
         if not os.path.isfile(dataset_output):
@@ -93,7 +93,7 @@ class Runner:
 
         command = self._generate_command(dataset_output, rules_output)
         if command:
-            print("Running {0} for: {1}/{2}".format(self.__str__(), experiment_dir, file_prefix))
+            print("{0} Running {1} for: {2}/{3}".format(prefix, self.__str__(), experiment_dir, file_prefix))
             self._run_process(command, experiment_dir, file_prefix)
             gzip_file(dataset_output)
             gzip_file(rules_output)
@@ -136,9 +136,10 @@ class Consumer(threading.Thread):
 
     def run(self):
         while not self._grid_search.stopped:
-            configuration = self._queue.get()
+            exp_num, configuration = self._queue.get()
             if configuration[-1]['param'] == 'runner' and isinstance(configuration[-1]['value'], Runner):
-                configuration[-1]['value'].run_experiment(self._grid_search._exp_dir, self._grid_search._max_dirs, configuration)
+                prefix = "[{0:6d}/{1:6d}]".format(exp_num, self._grid_search._num_of_experiments)
+                configuration[-1]['value'].run_experiment(self._grid_search._exp_dir, self._grid_search._max_dirs, configuration, prefix)
             else:
                 print("No runner for: ", configuration)
 
@@ -149,6 +150,10 @@ class GridSearch:
         self._create_experiment_dir()
         self._max_dirs = max_dirs
         self.stopped = False
+
+        self._num_of_experiments = 1
+        for param in parameters:
+            self._num_of_experiments *= param.cardinality()
 
     def _create_experiment_dir(self):
         self._exp_dir = os.path.join("experiments", "grid-search")
@@ -175,6 +180,7 @@ class GridSearch:
             consumer.start()
 
         start = time.time()
+        exp_num = 0
         try:
             for configuration in self._generate_configuration(0, []):
                 elapsed = time.time() - start
@@ -189,7 +195,8 @@ class GridSearch:
 
                     break
                 else:
-                    self._queue.put(configuration)
+                    exp_num += 1
+                    self._queue.put((exp_num, configuration))
 
         except KeyboardInterrupt:
             pass
