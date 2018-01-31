@@ -127,6 +127,7 @@ class GringoRunner(Runner):
     def __str__(self):
         return "Gringo"
 
+
 class PrologRunner(Runner):
     def _generate_command(self, dataset, rules):
         return [
@@ -138,6 +139,16 @@ class PrologRunner(Runner):
 
     def __str__(self):
         return 'Prolog'
+
+
+class DlvRunner(Runner):
+    def _generate_command(self, dataset, rules):
+        return [
+            '../Grounders/dlv/dlv', '-nofacts', '-silent', '-instantiate', dataset, rules
+        ]
+
+    def __str__(self):
+        return 'Dlv'
 
 
 class Consumer(threading.Thread):
@@ -247,7 +258,9 @@ if __name__ == "__main__":
         Parameter('all', [False, True]),
         Parameter('runner', [
             GringoRunner(),
-            PrologRunner()
+            PrologRunner(),
+            DlvRunner()
+
         ]),
     ],
     5)
