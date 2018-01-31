@@ -106,9 +106,9 @@ class Runner:
         run_time = ""
         try:
             start = time.perf_counter()
-            subprocess.run(command, stdout=subprocess.DEVNULL, timeout=self.TIME_OUT)
+            subprocess.run(command, stdout=subprocess.DEVNULL, timeout=self.TIME_OUT, stderr=subprocess.DEVNULL)
             end = time.perf_counter()
-            run_time = "{0:.3f}".format(end - start)
+            run_time = "{0:.5f}".format(end - start)
         except subprocess.TimeoutExpired:
             print("Timeout expired", file=sys.stderr)
             run_time = "Timeout expired"
@@ -126,6 +126,18 @@ class GringoRunner(Runner):
 
     def __str__(self):
         return "Gringo"
+
+class PrologRunner(Runner):
+    def _generate_command(self, dataset, rules):
+        return [
+            '../Grounders/swi-prolog/build/bin/swipl', '--nosignals', '-O', '--quiet', '--nodebug', '-f', dataset, '-s', rules
+        ]
+
+    def _alter_rules_config(self, config):
+        config['type'] = 'prolog'
+
+    def __str__(self):
+        return 'Prolog'
 
 
 class Consumer(threading.Thread):
@@ -224,17 +236,18 @@ if __name__ == "__main__":
         Parameter('facts', [10, 500, 1000]),
         Parameter('base_rules', [10, 50, 100]),
         Parameter('count', [1, 3, 10, 20]),
-        Parameter('rule_proportion', np.linspace(0, 1, 5)),
+        Parameter('rule_proportion', np.linspace(0, 1, 4)),
         Parameter('relations', [10, 50, 100]),
         Parameter('min_columns', [1, 5, 10]),
         Parameter('max_columns', [5, 10, 30]),
         Parameter('width', [1, 20, 50]),
-        Parameter('weight', np.linspace(0, 1, 5)),
+        Parameter('weight', np.linspace(0, 1, 4)),
         Parameter('duplicity', [0, 1, 5]),
         Parameter('unique', [False, True]),
         Parameter('all', [False, True]),
         Parameter('runner', [
             GringoRunner(),
+            PrologRunner()
         ]),
     ],
     5)
