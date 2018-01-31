@@ -151,6 +151,16 @@ class DlvRunner(Runner):
         return 'Dlv'
 
 
+class LParseRunner(Runner):
+    def _generate_command(self, dataset, rules):
+        return [
+            '../Grounders/lparse/build/lparse', '-t', '-W', 'none', dataset, rules
+        ]
+
+    def __str__(self):
+        return 'LParse'
+
+
 class Consumer(threading.Thread):
     def __init__(self, grid_search, queue):
         super().__init__()
@@ -259,8 +269,8 @@ if __name__ == "__main__":
         Parameter('runner', [
             GringoRunner(),
             PrologRunner(),
-            DlvRunner()
-
+            DlvRunner(),
+            LParseRunner()
         ]),
     ],
     5)
