@@ -113,7 +113,7 @@ class Runner:
             print("Timeout expired", file=sys.stderr)
             run_time = "Timeout expired"
 
-        with open(os.path.join(experiment_dir, file_prefix + '-result.txt'), 'w') as res_f:
+        with open(os.path.join(experiment_dir, file_prefix + '-result.txt'), 'a') as res_f:
             print("Time: {}".format(run_time), file=res_f)
 
 
