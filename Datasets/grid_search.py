@@ -31,13 +31,18 @@ class Parameter:
                 'value': r
             }
 
+    def cardinality(self):
+        return len(self._options)
+
 
 class Runner:
+    TIME_OUT=600
+
     @staticmethod
     def _setup(experiment_dir, file_prefix, make_dir, parameters, configuration):
         if len(parameters) < 1:
             if os.path.isfile(os.path.join(experiment_dir, file_prefix + '-result.txt')) or \
-                os.path.isfile(os.path.join(experiment_dir, file_prefix + '-result.txt.gz')):
+               os.path.isfile(os.path.join(experiment_dir, file_prefix + '-result.txt.gz')):
                 return None, None, None
             else:
                 return experiment_dir, file_prefix, configuration
@@ -101,7 +106,7 @@ class Runner:
         run_time = ""
         try:
             start = time.perf_counter()
-            subprocess.run(command, stdout=subprocess.DEVNULL, timeout=600)
+            subprocess.run(command, stdout=subprocess.DEVNULL, timeout=self.TIME_OUT)
             end = time.perf_counter()
             run_time = "{0:.3f}".format(end - start)
         except subprocess.TimeoutExpired:
@@ -162,16 +167,30 @@ class GridSearch:
             for param in self._parameters[index].get_options():
                 yield from self._generate_configuration(index+1, configuration + [param])
 
-    def run(self, num_threads):
+    def run(self, num_threads, max_time):
         self._queue = queue.Queue(maxsize=num_threads)
         consumers = [Consumer(self, self._queue) for i in range(num_threads)]
 
         for consumer in consumers:
             consumer.start()
 
+        start = time.time()
         try:
             for configuration in self._generate_configuration(0, []):
-                self._queue.put(configuration)
+                elapsed = time.time() - start
+                if elapsed + Runner.TIME_OUT >= max_time:
+                    print("Time expired, clearing queue", file=sys.stderr)
+                    while not self._queue.empty():
+                        try:
+                            self._queue.get(False)
+                        except queue.Empty:
+                            continue
+                        self._queue.task_done()
+
+                    break
+                else:
+                    self._queue.put(configuration)
+
         except KeyboardInterrupt:
             pass
 
@@ -183,8 +202,12 @@ class GridSearch:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Runs grid search in defined parameter space")
     parser.add_argument(
-        "-t", "--threads", type=int, default=1,
+        "-p", "--threads", type=int, default=1,
         help="Spawn N threads"
+    )
+    parser.add_argument(
+        "-t", "--time", type=int, default=3600,
+        help="Number of seconds to run the algorithm"
     )
 
     args = parser.parse_args()
@@ -209,5 +232,5 @@ if __name__ == "__main__":
     ],
     5)
 
-    grid_search.run(args.threads)
-    print("All done")
+    grid_search.run(args.threads, args.time)
+    print("All done", file=sys.stderr)
