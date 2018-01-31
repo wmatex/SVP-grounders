@@ -93,7 +93,7 @@ class Runner:
 
         command = self._generate_command(dataset_output, rules_output)
         if command:
-            print("{0} Running {1} for: {2}/{3}".format(prefix, self.__str__(), experiment_dir, file_prefix))
+            print("{0} {1}/{2}".format(prefix, experiment_dir, file_prefix))
             self._run_process(command, experiment_dir, file_prefix)
             gzip_file(dataset_output)
             gzip_file(rules_output)
