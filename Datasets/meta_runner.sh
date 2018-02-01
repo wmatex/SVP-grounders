@@ -2,7 +2,7 @@
 
 #PBS -N DP-Grounders
 #PBS -l select=1:ncpus=4:mem=128gb:scratch_local=20gb
-#PBS -l walltime=8:00:00
+#PBS -l walltime=10:00:00
 #PBS -j oe
 #PBS -m e
 
@@ -24,7 +24,7 @@ cd $SCRATCHDIR/Datasets
 module add python36-modules-gcc
 
 # Compute
-./grid_search.py -p 4 >> experiments/grid-search/result.out
+./grid_search.py -p 4 -t 36000 >> experiments/grid-search/result.out
 
 # Sync computed results
-sync_result || export CLEAN_SCRATCH=false # copies result to your input data directory. The result will not be removed if the copying fails.
+sync_result || export CLEAN_SCRATCH=false
