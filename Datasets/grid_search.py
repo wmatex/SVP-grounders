@@ -217,7 +217,7 @@ class GridSearch:
         try:
             for configuration in self._generate_configuration(0, []):
                 elapsed = time.time() - start
-                if elapsed + Runner.TIME_OUT >= max_time:
+                if elapsed + 2*Runner.TIME_OUT >= max_time:
                     print("Time expired, clearing queue", file=sys.stderr)
                     while not self._queue.empty():
                         try:
