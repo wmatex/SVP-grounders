@@ -7,17 +7,10 @@ import subprocess
 import os
 import sys
 import numpy as np
-import gzip
-import shutil
 import queue
 import threading
 import argparse
 
-def gzip_file(filename):
-    with open(filename, 'rb') as f_in:
-        with gzip.open(filename + '.gz', 'wb') as f_out:
-            shutil.copyfileobj(f_in, f_out)
-            os.remove(filename)
 
 class Parameter:
     def __init__(self, name, options):
@@ -95,8 +88,9 @@ class Runner:
         if command:
             print("{0} {1}/{2}".format(prefix, experiment_dir, file_prefix))
             self._run_process(command, experiment_dir, file_prefix)
-            gzip_file(dataset_output)
-            gzip_file(rules_output)
+
+            os.remove(dataset_output)
+            os.remove(rules_output)
 
     def _generate_command(self, dataset, rules):
         return None
