@@ -7,7 +7,7 @@
 #PBS -m e
 
 function sync_result() {
-    rsync -az experiments/grid-search/ $DATADIR/$GRID_DATA
+    rsync -az --exclude='*.gz' experiments/grid-search/ $DATADIR/$GRID_DATA
 }
 
 trap "sync_result && clean_scratch" TERM EXIT
@@ -16,7 +16,7 @@ DATADIR="/storage/praha1/home/wmatex/SVP-grounders"
 GRID_DATA="Datasets/experiments/grid-search"
 
 # Prepare data
-rsync -az $DATADIR/ $SCRATCHDIR/
+rsync -az --exclude='*.gz' $DATADIR/ $SCRATCHDIR/
 
 # Switch to the scratch dir
 cd $SCRATCHDIR/Datasets
