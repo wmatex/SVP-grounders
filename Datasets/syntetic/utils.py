@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 def generate_identifier(x, y = None):
     a = 97
     z = 123

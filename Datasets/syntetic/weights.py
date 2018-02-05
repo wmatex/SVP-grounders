@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 def generate(items, first_item_weight):
     p = first_item_weight
 

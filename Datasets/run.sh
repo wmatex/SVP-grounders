@@ -2,8 +2,8 @@
 
 # Constants
 EXPERIMENT_ROOT="experiments"
-DATASET_GENERATOR="Syntetic/datasets.py"
-RULES_GENERATOR="Syntetic/rules.py"
+DATASET_GENERATOR="python3 -m syntetic.datasets"
+RULES_GENERATOR="python3 -m syntetic.rules"
 PROGRAM_NAME="$0"
 GROUNDERS="../Grounders"
 

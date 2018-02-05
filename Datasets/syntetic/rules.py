@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 Create rules from defined datasets based on provided features.
 """
@@ -8,9 +6,9 @@ import random
 import argparse
 import sys
 import numpy as np
-import weights
-import convert
-from utils import generate_identifier
+from syntetic import weights
+from syntetic import convert
+from syntetic.utils import generate_identifier
 
 random.seed(0)
 np.random.seed(0)
@@ -80,6 +78,11 @@ def parse_arguments():
         help='Type of data file'
     )
 
+    parser.add_argument(
+        '--output', type=argparse.FileType('w'), default=sys.stdout,
+        help="Output file"
+    )
+
     return parser.parse_args()
 
 
@@ -118,7 +121,7 @@ class Rule:
         self._tables = [tables[t] for t in tables_list]
 
         non_zero_rules = sum(i > 0 for i in wgs_rules)
-        num_of_rules = min(non_zero_rules, num_of_tables*rules_proportion)
+        num_of_rules = min(non_zero_rules, int(num_of_tables*rules_proportion))
         if num_of_rules > 0 and len(rules_list) > 0:
             rules_list = np.random.choice(rules_list, size=num_of_rules, p=wgs_rules, replace=False)
         else:
@@ -196,35 +199,38 @@ class Rule:
             })
 
 
-if __name__ == "__main__":
-    args = parse_arguments()
-
+def run(parameters):
     importer = None
-    if args.data_format == 'datalog':
-        importer = convert.DatalogImporter(args.data, args.print)
-    elif args.data_format == 'sql':
-        importer = convert.SQLImporter(args.data, args.print)
+    if parameters['data_format'] == 'datalog':
+        importer = convert.DatalogImporter(parameters['data'], parameters['print'])
+    elif parameters['data_format'] == 'sql':
+        importer = convert.SQLImporter(parameters['data'], parameters['print'])
 
     rules = []
-    rules_predicates = []
 
-    for i in range(args.base_rules):
-        r = Rule(i, importer.predicates, [], args.width, args.weight, 0)
-        r.generate(args.duplicity + 1, args.unique, args.all)
+    for i in range(parameters['base_rules']):
+        r = Rule(i, importer.predicates, [], parameters['width'], parameters['weight'], 0)
+        r.generate(parameters['duplicity'] + 1, parameters['unique'], parameters['all'])
 
         rules.append(r)
 
-    for i in range(args.count):
-        r = Rule(i+args.base_rules, importer.predicates, rules, args.width, args.weight, args.rule_proportion)
-        r.generate(args.duplicity + 1, args.unique, args.all)
+    for i in range(parameters['count']):
+        r = Rule(i+parameters['base_rules'], importer.predicates, rules, parameters['width'], parameters['weight'], parameters['rule_proportion'])
+        r.generate(parameters['duplicity'] + 1, parameters['unique'], parameters['all'])
 
         rules.append(r)
 
     exporter = None
-    if args.type == 'datalog':
-        exporter = convert.DatalogExporter()
-    elif args.type == 'prolog':
-        exporter = convert.PrologExporter()
+    if parameters['type'] == 'datalog':
+        exporter = convert.DatalogExporter(file=parameters['output'])
+    elif parameters['type'] == 'prolog':
+        exporter = convert.PrologExporter(file=parameters['output'])
 
     exporter.export(rules)
+
+
+if __name__ == "__main__":
+    args = parse_arguments()
+    run(vars(args))
+
 
