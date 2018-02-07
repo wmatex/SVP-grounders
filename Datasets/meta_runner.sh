@@ -7,7 +7,7 @@
 #PBS -m e
 
 function sync_result() {
-    rsync -az --exclude='*.gz' experiments/grid-search/ $DATADIR/$GRID_DATA
+    rsync -avz --exclude='*.gz' experiments/grid-search/ $DATADIR/$GRID_DATA
 }
 
 trap "sync_result && clean_scratch" TERM EXIT
