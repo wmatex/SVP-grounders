@@ -69,7 +69,7 @@ def parse_arguments():
     )
 
     parser.add_argument(
-        '--type', default='datalog', choices=['datalog', 'prolog'],
+        '--type', default='datalog', choices=['datalog', 'prolog', 'sql'],
         help='Type of exported file format'
     )
 
@@ -220,11 +220,12 @@ def run(parameters):
 
         rules.append(r)
 
-    exporter = None
-    if parameters['type'] == 'datalog':
-        exporter = convert.DatalogExporter(file=parameters['output'])
-    elif parameters['type'] == 'prolog':
+    if parameters['type'] == 'prolog':
         exporter = convert.PrologExporter(file=parameters['output'])
+    elif parameters['type'] == 'sql':
+        exporter = convert.SQLExporter(file=parameters['output'])
+    else:
+        exporter = convert.DatalogExporter(file=parameters['output'])
 
     exporter.export(rules)
 

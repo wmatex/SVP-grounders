@@ -64,10 +64,14 @@ class PrologExporter(DatalogExporter):
 
 class SQLExporter(Exporter):
     def _export_table(self, table):
-        self._export_definition(table)
-        self._export_data(table)
+        self._export_table_definition(table)
+        self._export_table_data(table)
 
-    def _export_definition(self, table):
+    def _export_rule(self, rule):
+        definition = "CREATE OR REPLACE TEMPORARY VIEW AS {query};"
+        select = "SELECT {head} FROM {tables}"
+
+    def _export_table_definition(self, table):
         definition = """
 DROP TABLE IF EXISTS {name};
 CREATE TABLE {name} (
@@ -97,7 +101,7 @@ CREATE TABLE {name} (
             columns=",\n  ".join(columns),
         ), file=self._file)
 
-    def _export_data(self, table):
+    def _export_table_data(self, table):
         insert_query = "INSERT INTO {table} VALUES {values};"
 
         data = []
@@ -181,8 +185,8 @@ class DatalogImporter(Importer):
 
 class SQLImporter(Importer):
     def _parse(self, print_to_stdout):
-        table_def_reg = re.compile('CREATE TABLE `(?P<name>[^`]+)`\s* \(')
-        insert_reg = re.compile('INSERT INTO `(?P<name>[^`]+)` VALUES (?P<data>.*);')
+        table_def_reg = re.compile('CREATE TABLE `?(?P<name>[^` ]+)`?\s* \(')
+        insert_reg = re.compile('INSERT INTO `?(?P<name>[^` ]+)`? VALUES (?P<data>.*);')
 
         data = {}
 
@@ -224,7 +228,7 @@ class SQLImporter(Importer):
 
     def _table_def(self, name):
         end_table_def = re.compile('\s*\).*;')
-        column_reg = re.compile('\s*`(?P<column>[^`]+)`')
+        column_reg = re.compile('\s*`?(?P<column>[^` ]+)`?')
         relation_reg = re.compile('\s*CONSTRAINT .* FOREIGN KEY \(`(?P<col>[^`]+)`\) REFERENCES `(?P<table>[^`]+)`')
 
         table_def = {
