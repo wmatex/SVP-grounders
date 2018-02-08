@@ -10,11 +10,13 @@ import numpy as np
 import queue
 import threading
 import argparse
+import sqlite3
 
 
 class Parameter:
-    def __init__(self, name, options):
+    def __init__(self, name, type, options):
         self._name = name
+        self.type = type
         self._options = options
 
     def get_options(self):
@@ -26,6 +28,74 @@ class Parameter:
 
     def cardinality(self):
         return len(self._options)
+
+
+class ResultStore:
+    DATABASE="results.db"
+    TABLE_NAME="results"
+    RESULT_COLUMN="time"
+
+    def __init__(self, directory, parameters):
+        self._connection = sqlite3.connect(os.path.join(directory, self.DATABASE))
+        self._cursor = self._connection.cursor()
+
+        self._create_store(parameters)
+
+    def _create_store(self, parameters):
+        sql = """
+        CREATE TABLE IF NOT EXISTS {table} (
+        {columns},
+        PRIMARY KEY (col_list)
+        ) WITHOUT ROWID;
+        """
+
+        columns = []
+        col_list = []
+        for param in parameters:
+            columns.append("{} {}".format(param._name, param.type))
+            col_list.append(param._name)
+
+        columns.append("time text")
+
+        self._cursor.execute(sql.format(
+            table=self.TABLE_NAME,
+            columns=", ".join(columns),
+            col_list=",".join(col_list)
+        ))
+        self._connection.commit()
+
+    def find(self, configuration):
+        sql = "SELECT * FROM {table} WHERE {constraints};"
+
+        constraints = []
+        for key, value in configuration.enumerate:
+            constraints.append("{key} = :{key}".format(key=key))
+
+        self._cursor.execute(sql.format(table=self.TABLE_NAME, constraints=" AND ".join(constraints)), configuration)
+        return self._cursor.fetchone()
+
+    def insert(self, configuration, value):
+        sql = "INSERT INTO {table} ({keys}) VALUES ({values});"
+
+        values = []
+        keys = []
+        for key, val in configuration.enumerate():
+            keys.append(key)
+            values.append(":{}".format(val))
+
+        keys.append(self.RESULT_COLUMN)
+        values.append(value)
+
+        configuration[self.RESULT_COLUMN] = value
+        self._cursor.execute(sql.format(
+            table=self.TABLE_NAME,
+            keys=", ".join(keys),
+            values=", ".join(values)
+        ), configuration)
+        self._connection.commit()
+
+    def __del__(self):
+        self._connection.close()
 
 
 class Runner:
