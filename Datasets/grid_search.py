@@ -259,7 +259,7 @@ if __name__ == "__main__":
         Parameter('max_columns', [5, 10, 30]),
         Parameter('width', [1, 20, 50]),
         Parameter('weight', np.linspace(0, 1, 4)),
-        Parameter('duplicity', [0, 1, 5]),
+        Parameter('duplicity', [0, 1]),
         Parameter('unique', [False, True]),
         Parameter('all', [False, True]),
         Parameter('runner', [
