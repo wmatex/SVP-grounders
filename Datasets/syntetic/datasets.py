@@ -37,6 +37,11 @@ def parse_arguments():
     )
 
     parser.add_argument(
+        '-fmt', '--format', default='datalog', choices=['datalog', 'sql'],
+        help="Output file format"
+    )
+
+    parser.add_argument(
         '--output', type=argparse.FileType('w'), default=sys.stdout,
         help="Output file"
     )
@@ -90,8 +95,13 @@ def run(parameters):
     for t1, t2 in pairs:
         t1.add_relation(t2)
 
-    exporter = convert.DatalogExporter(file=parameters['output'])
+    if parameters['format'] == 'sql':
+        exporter = convert.SQLExporter(file=parameters['output'])
+    else:
+        exporter = convert.DatalogExporter(file=parameters['output'])
+
     exporter.export(tables)
+
 
 if __name__ == "__main__":
     args = parse_arguments()

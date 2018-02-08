@@ -62,6 +62,58 @@ class PrologExporter(DatalogExporter):
         super()._finalize(values)
 
 
+class SQLExporter(Exporter):
+    def _export_table(self, table):
+        self._export_definition(table)
+        self._export_data(table)
+
+    def _export_definition(self, table):
+        definition = """
+DROP TABLE IF EXISTS {name};
+CREATE TABLE {name} (
+  {columns},
+  PRIMARY KEY ({primary})
+);
+        """
+
+        column = "{name} character varying(255) NOT NULL {relation}"
+        relation = "REFERENCES {reftable} ({refcolumn})"
+
+        columns = []
+        for index in range(len(table._data[0])):
+            name = table._id + "_col_" + str(index)
+            rel_string = ""
+            if index in table._relations:
+                rel = table._relations[index]
+                rel_string = relation.format(reftable=rel._id, refcolumn=rel._id+"_col_0")
+
+            columns.append(
+                column.format(name=name, relation=rel_string)
+            )
+
+        print(definition.format(
+            name=table._id,
+            primary=table._id + "_col_0",
+            columns=",\n  ".join(columns),
+        ), file=self._file)
+
+    def _export_data(self, table):
+        insert_query = "INSERT INTO {table} VALUES {values};"
+
+        data = []
+        for row in table._data:
+            row_data = []
+            for column in row:
+                row_data.append("'{}'".format(column))
+
+            data.append("({})".format(",".join(row_data)))
+
+        print(
+            insert_query.format(table=table._id, values=",".join(data)),
+            file=self._file
+        )
+
+
 class Importer:
     """
     Parse the structure of the given dataset from the file header
