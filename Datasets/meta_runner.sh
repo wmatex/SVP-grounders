@@ -18,10 +18,10 @@ DATADIR="/storage/praha1/home/wmatex/SVP-grounders"
 GRID_DATA="Datasets/experiments/grid-search"
 
 # Prepare project
-rsync -az --exclude='*.gz' $DATADIR/ $SCRATCHDIR/
+cp -a $DATADIR $SCRATCHDIR
 
 # Switch to the scratch dir
-cd $SCRATCHDIR/Datasets
+cd $SCRATCHDIR/SVP-grounders/Datasets
 
 module add python36-modules-gcc
 
