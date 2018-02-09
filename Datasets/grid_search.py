@@ -237,6 +237,9 @@ class Consumer(threading.Thread):
         while not self._grid_search.stopped:
             configuration, runners = self._queue.get()
             for runner in self._grid_search._runners:
+                if self._grid_search.stopped:
+                    break
+
                 if str(runner) not in runners:
                     result = runner.run_experiment(configuration)
 
