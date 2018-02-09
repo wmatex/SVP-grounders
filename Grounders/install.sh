@@ -13,8 +13,6 @@ function build_clingo() {
 
     cmake -H. -B$BUILD_DIR -DCMAKE_BUILD_TYPE=Release
     cmake --build $BUILD_DIR
-
-    cd -
 }
 
 function build_swi_prolog() {
@@ -28,8 +26,6 @@ function build_swi_prolog() {
 
     ./prepare --yes
     ./build.templ --prefix=$(realpath $BUILD_DIR)
-
-    cd -
 }
 
 function build_dlv() {
@@ -43,8 +39,6 @@ function build_dlv() {
     cd $BUILD_DIR
     wget http://www.dlvsystem.com/files/dlv.x86-64-linux-elf-static.bin -O dlv
     chmod +x dlv
-
-    cd -
 }
 
 function build_lparse() {
@@ -62,14 +56,24 @@ function build_lparse() {
     ./configure --prefix=../build
     make
     make install
+}
 
-    cd -
+function build_postgresql() {
+    BUILD_DIR="build"
+
+    cd postgresql
+    
+    wget https://ftp.postgresql.org/pub/source/v10.1/postgresql-10.1.tar.bz2
+
 }
 
 if [ "$1" = "--all" ]; then
     build_clingo
+    cd -
     build_swi_prolog
+    cd -
     build_dlv
+    cd -
     build_lparse
 elif [ "$1" = "--clingo" ]; then
     build_clingo
