@@ -6,8 +6,10 @@
 #PBS -j oe
 #PBS -m e
 
+START=$(date +%s)
+
 function sync_result() {
-    rsync -avz --exclude='*.gz' experiments/grid-search/ $DATADIR/$GRID_DATA
+    cp experiments/grid-search/results.db $DATADIR/$GRID_DATA
 }
 
 trap "sync_result && clean_scratch" TERM EXIT
@@ -15,7 +17,7 @@ trap "sync_result && clean_scratch" TERM EXIT
 DATADIR="/storage/praha1/home/wmatex/SVP-grounders"
 GRID_DATA="Datasets/experiments/grid-search"
 
-# Prepare data
+# Prepare project
 rsync -az --exclude='*.gz' $DATADIR/ $SCRATCHDIR/
 
 # Switch to the scratch dir
@@ -23,8 +25,12 @@ cd $SCRATCHDIR/Datasets
 
 module add python36-modules-gcc
 
+END=$(date +%s)
+SECONDS=$((36000 - ($END - $START)))
+
+echo "Syncing took $SECONDS s"
 # Compute
-./grid_search.py -p 4 -t 36000 >> experiments/grid-search/result.out
+./grid_search.py -p 4 -t $SECONDS
 
 # Sync computed results
 sync_result || export CLEAN_SCRATCH=false
