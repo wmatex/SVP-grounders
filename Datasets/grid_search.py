@@ -14,9 +14,8 @@ import sqlite3
 
 
 class Parameter:
-    def __init__(self, name, type, options):
+    def __init__(self, name, options):
         self._name = name
-        self.type = type
         self._options = options
 
     def get_options(self):
@@ -41,6 +40,15 @@ class ResultStore:
 
         self._create_store(parameters)
 
+    @staticmethod
+    def _resolve_type(value):
+        if isinstance(value, float):
+            return 'real'
+        elif isinstance(value, int):
+            return 'integer'
+        else:
+            return 'text'
+
     def _create_store(self, parameters):
         sql = """
         CREATE TABLE IF NOT EXISTS {table} (
@@ -52,7 +60,7 @@ class ResultStore:
         columns = []
         col_list = []
         for param in parameters:
-            columns.append("{} {}".format(param._name, param.type))
+            columns.append("{} {}".format(param._name, ResultStore._resolve_type(param._options[0])))
             col_list.append(param._name)
 
         columns.append("time text")
