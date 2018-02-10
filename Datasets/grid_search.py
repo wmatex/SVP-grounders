@@ -13,6 +13,7 @@ import argparse
 import sqlite3
 import tempfile
 import random
+import datetime
 
 
 class Parameter:
@@ -105,12 +106,10 @@ class ResultStore:
         values = []
         keys = []
         config = ResultStore._transform_config(configuration)
+        config[self.RESULT_COLUMN] = value
         for key, val in config.items():
             keys.append(key)
             values.append(":{}".format(key))
-
-        keys.append(self.RESULT_COLUMN)
-        values.append(value)
 
         config[self.RESULT_COLUMN] = value
         with self._lock:
@@ -236,6 +235,9 @@ class Consumer(threading.Thread):
     def run(self):
         while not self._grid_search.stopped:
             configuration, runners = self._queue.get()
+            if configuration is None:
+                break
+
             for runner in self._grid_search._runners:
                 if self._grid_search.stopped:
                     break
@@ -295,18 +297,23 @@ class GridSearch:
 
         start = time.time()
         print("Started on {}".format(time.strftime("%X")), file=sys.stderr)
+        print("Running for {}s, ETA: {}".format(max_time, (datetime.datetime.fromtimestamp(start + max_time).strftime("%X"))))
         try:
             while not self.stopped:
                 elapsed = time.time() - start
                 if elapsed + 2*Runner.TIME_OUT >= max_time:
                     print("Time expired, clearing queue", file=sys.stderr)
                     print("Ended on {}".format(time.strftime("%X")), file=sys.stderr)
+                    self.stopped = True
                     while not self._queue.empty():
                         try:
                             self._queue.get(False)
                         except queue.Empty:
                             continue
                         self._queue.task_done()
+
+                    for i in range(num_threads):
+                        self._queue.put((None, None))
 
                     break
 
