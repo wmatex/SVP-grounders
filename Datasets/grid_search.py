@@ -76,7 +76,7 @@ class ResultStore:
             columns.append("{} {} NOT NULL".format(ResultStore._transform(param.name), ResultStore._resolve_type(param.options[0])))
             col_list.append(ResultStore._transform(param.name))
 
-        columns.append("time text NOT NULL")
+        columns.append("time real")
 
         sql_query = sql.format(
             table=self.TABLE_NAME,
@@ -113,13 +113,17 @@ class ResultStore:
 
         config[self.RESULT_COLUMN] = value
         with self._lock:
-            sql_query = sql.format(
-                table=self.TABLE_NAME,
-                keys=", ".join(keys),
-                values=", ".join(values)
-            )
-            self._cursor.execute(sql_query, config)
-            self._connection.commit()
+            try:
+                sql_query = sql.format(
+                    table=self.TABLE_NAME,
+                    keys=", ".join(keys),
+                    values=", ".join(values)
+                )
+                self._cursor.execute(sql_query, config)
+                self._connection.commit()
+            except sqlite3.IntegrityError:
+                print("Unique constraint failed: {}".format(sql_query))
+                pass
 
     def __del__(self):
         self._connection.close()
@@ -128,7 +132,7 @@ class ResultStore:
 class Runner:
     TIME_OUT=600
 
-    def run_experiment(self, configuration):
+    def run_experiment(self, configuration, name):
         dataset_config = configuration.copy()
         dataset_config['output'] = tempfile.NamedTemporaryFile(mode='w+')
         datasets.run(dataset_config)
@@ -146,19 +150,17 @@ class Runner:
         rules.run(rules_config)
 
         command = self._generate_command(dataset_config['output'].name, rules_config['output'].name)
-        result = None
-        if command:
-            print(self.print_info(configuration))
-            result = self._run_process(command)
+        print(self.print_info(configuration, name))
+        result = self._run_process(command)
 
         return result
 
-    def print_info(self, configuration):
+    def print_info(self, configuration, name):
         info_line = []
         for key in sorted(configuration):
             info_line.append("[{0}={1}]".format(str(key), str(configuration[key])))
 
-        return "{0:10s}: {1}".format(str(self), ''.join(info_line))
+        return "[{2}] {0:10s}: {1}".format(str(self), ''.join(info_line), name)
 
     def _alter_rules_config(self, config):
         pass
@@ -175,9 +177,10 @@ class Runner:
             subprocess.run(command, stdout=subprocess.DEVNULL, timeout=self.TIME_OUT, stderr=subprocess.DEVNULL)
             end = time.perf_counter()
             run_time = "{0:.5f}".format(end - start)
+            print(run_time, sys.stderr)
         except subprocess.TimeoutExpired:
             print("Timeout expired", file=sys.stderr)
-            run_time = "Timeout expired"
+            run_time = None
 
         return run_time
 
@@ -227,10 +230,11 @@ class LParseRunner(Runner):
 
 
 class Consumer(threading.Thread):
-    def __init__(self, grid_search, queue):
+    def __init__(self, grid_search, queue, name):
         super().__init__()
         self._grid_search = grid_search
         self._queue = queue
+        self._name = name
 
     def run(self):
         while not self._grid_search.stopped:
@@ -243,10 +247,10 @@ class Consumer(threading.Thread):
                     break
 
                 if str(runner) not in runners:
-                    result = runner.run_experiment(configuration)
+                    result = runner.run_experiment(configuration, self._name)
+                    self._grid_search.store_result(configuration, runner, result)
 
-                    if result is not None:
-                        self._grid_search.store_result(configuration, runner, result)
+            self._queue.task_done()
 
 
 class GridSearch:
@@ -276,6 +280,7 @@ class GridSearch:
 
     def store_result(self, configuration, runner, value):
         configuration[self.GROUNDER_PARAM] = str(runner)
+
         self._result_store.insert(configuration, value)
 
     def _get_random_configuration(self):
@@ -290,7 +295,7 @@ class GridSearch:
 
     def run(self, num_threads, max_time):
         self._queue = queue.Queue(maxsize=num_threads)
-        consumers = [Consumer(self, self._queue) for i in range(num_threads)]
+        consumers = [Consumer(self, self._queue, i) for i in range(num_threads)]
 
         for consumer in consumers:
             consumer.start()
@@ -298,6 +303,7 @@ class GridSearch:
         start = time.time()
         print("Started on {}".format(time.strftime("%X")), file=sys.stderr)
         print("Running for {}s, ETA: {}".format(max_time, (datetime.datetime.fromtimestamp(start + max_time).strftime("%X"))))
+        configuration = None
         try:
             while not self.stopped:
                 elapsed = time.time() - start
@@ -317,14 +323,20 @@ class GridSearch:
 
                     break
 
-                configuration = self._get_random_configuration()
+                if configuration is None:
+                    configuration = self._get_random_configuration()
+
                 stored = self._result_store.find(configuration)
                 if len(stored) < len(self._runners):
                     runners = [r[self.GROUNDER_PARAM] for r in stored]
-                    self._queue.put((configuration, runners))
+                    try:
+                        self._queue.put((configuration, runners), timeout=Runner.TIME_OUT)
+                        configuration = None
+                    except queue.Full:
+                        pass
 
         except KeyboardInterrupt:
-            pass
+            self.stopped = True
 
         self.stopped = True
         for consumer in consumers:
