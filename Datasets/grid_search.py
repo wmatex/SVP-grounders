@@ -177,7 +177,7 @@ class Runner:
             subprocess.run(command, stdout=subprocess.DEVNULL, timeout=self.TIME_OUT, stderr=subprocess.DEVNULL)
             end = time.perf_counter()
             run_time = "{0:.5f}".format(end - start)
-            print(run_time, sys.stderr)
+            print(run_time, file=sys.stderr)
         except subprocess.TimeoutExpired:
             print("Timeout expired", file=sys.stderr)
             run_time = None
@@ -334,6 +334,8 @@ class GridSearch:
                         configuration = None
                     except queue.Full:
                         pass
+                else:
+                    configuration = None
 
         except KeyboardInterrupt:
             self.stopped = True
