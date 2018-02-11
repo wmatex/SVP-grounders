@@ -28,7 +28,7 @@ class Exporter:
 
     def _finalize(self, values):
         try:
-            self._file.close()
+            self._file.flush()
         except ValueError:
             pass
 
@@ -48,6 +48,7 @@ class DatalogExporter(Exporter):
         print("rule_" + rule._id + "(" + ", ".join(rule.head) + ") :- ", end="", file=self._file)
         body = [tr['name'] + "(" + ", ".join(tr['variables']) + ")" for tr in rule.body]
         print(", ".join(body) + ".", file=self._file)
+
 
 class PrologExporter(DatalogExporter):
     def _export_rule(self, rule):

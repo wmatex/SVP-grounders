@@ -200,11 +200,10 @@ class Rule:
 
 
 def run(parameters):
-    importer = None
-    if parameters['data_format'] == 'datalog':
-        importer = convert.DatalogImporter(parameters['data'], parameters['print'])
-    elif parameters['data_format'] == 'sql':
+    if parameters['data_format'] == 'sql':
         importer = convert.SQLImporter(parameters['data'], parameters['print'])
+    else:
+        importer = convert.DatalogImporter(parameters['data'], parameters['print'])
 
     rules = []
 

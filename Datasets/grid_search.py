@@ -10,105 +10,179 @@ import numpy as np
 import queue
 import threading
 import argparse
+import sqlite3
+import tempfile
+import random
+import datetime
 
 
 class Parameter:
     def __init__(self, name, options):
-        self._name = name
-        self._options = options
-
-    def get_options(self):
-        for r in self._options:
-            yield {
-                'param': self._name,
-                'value': r
-            }
+        self.name = name
+        self.options = options
 
     def cardinality(self):
-        return len(self._options)
+        return len(self.options)
+
+
+class ResultStore:
+    DATABASE="results.db"
+    TABLE_NAME="results"
+    RESULT_COLUMN="time"
+
+    def __init__(self, directory, parameters):
+        self._connection = sqlite3.connect(os.path.join(directory, self.DATABASE), check_same_thread=False)
+        self._connection.row_factory = sqlite3.Row
+        self._cursor = self._connection.cursor()
+        self._lock = threading.Lock()
+
+        self._create_store(parameters)
+
+    @staticmethod
+    def _resolve_type(value):
+        if isinstance(value, float):
+            return 'real'
+        elif isinstance(value, int):
+            return 'integer'
+        else:
+            return 'text'
+
+    @staticmethod
+    def _transform(param):
+        if param == "unique" or param == "all":
+            return "param_" + param
+
+        return param
+
+    @staticmethod
+    def _transform_config(configuration):
+        c = {}
+        for key in configuration:
+            c[ResultStore._transform(key)] = configuration[key]
+
+        return c
+
+    def _create_store(self, parameters):
+        sql = """
+        CREATE TABLE IF NOT EXISTS {table} (
+        {columns},
+        PRIMARY KEY ({col_list})
+        ) WITHOUT ROWID;
+        """
+
+        columns = []
+        col_list = []
+        for param in parameters:
+            columns.append("{} {} NOT NULL".format(ResultStore._transform(param.name), ResultStore._resolve_type(param.options[0])))
+            col_list.append(ResultStore._transform(param.name))
+
+        columns.append("time real")
+
+        sql_query = sql.format(
+            table=self.TABLE_NAME,
+            columns=", ".join(columns),
+            col_list=",".join(col_list)
+        )
+        self._cursor.execute(sql_query)
+        self._connection.commit()
+
+    def find(self, configuration):
+        sql = "SELECT * FROM {table} WHERE {constraints};"
+
+        constraints = []
+
+        config = ResultStore._transform_config(configuration)
+        for key, value in config.items():
+            constraints.append("{key} = :{key}".format(key=key))
+
+
+        with self._lock:
+            self._cursor.execute(sql.format(table=self.TABLE_NAME, constraints=" AND ".join(constraints)), config)
+            return self._cursor.fetchall()
+
+    def insert(self, configuration, value):
+        sql = "INSERT INTO {table} ({keys}) VALUES ({values});"
+
+        values = []
+        keys = []
+        config = ResultStore._transform_config(configuration)
+        config[self.RESULT_COLUMN] = value
+        for key, val in config.items():
+            keys.append(key)
+            values.append(":{}".format(key))
+
+        config[self.RESULT_COLUMN] = value
+        with self._lock:
+            try:
+                sql_query = sql.format(
+                    table=self.TABLE_NAME,
+                    keys=", ".join(keys),
+                    values=", ".join(values)
+                )
+                self._cursor.execute(sql_query, config)
+                self._connection.commit()
+            except sqlite3.IntegrityError:
+                print("Unique constraint failed: {}".format(sql_query))
+                pass
+
+    def __del__(self):
+        self._connection.close()
 
 
 class Runner:
     TIME_OUT=600
 
-    @staticmethod
-    def _setup(experiment_dir, file_prefix, make_dir, parameters, configuration):
-        if len(parameters) < 1:
-            if os.path.isfile(os.path.join(experiment_dir, file_prefix + '-result.txt')) or \
-               os.path.isfile(os.path.join(experiment_dir, file_prefix + '-result.txt.gz')):
-                return None, None, None
-            else:
-                return experiment_dir, file_prefix, configuration
+    def run_experiment(self, configuration, name):
+        dataset_config = configuration.copy()
+        dataset_config['output'] = tempfile.NamedTemporaryFile(mode='w+')
+        datasets.run(dataset_config)
 
-        else:
-            if make_dir > 0:
-                experiment_dir = os.path.join(experiment_dir, parameters[0]['param'], str(parameters[0]['value']))
-                if not os.path.isdir(experiment_dir):
-                    os.makedirs(experiment_dir, exist_ok=True)
-            else:
-                file_prefix += "[{0}={1}]".format(parameters[0]['param'], parameters[0]['value'])
+        rules_config = configuration.copy()
+        rules_config['output'] = tempfile.NamedTemporaryFile(mode='w')
+        rules_config['data'] = dataset_config['output']
+        rules_config['data'].seek(0)
 
-            configuration.update({parameters[0]['param']: parameters[0]['value']})
-            return Runner._setup(experiment_dir, file_prefix, make_dir - 1, parameters[1:], configuration)
+        rules_config['data_format'] = 'datalog'
+        rules_config['type'] = 'datalog'
+        rules_config['print'] = False
 
+        self._alter_rules_config(rules_config)
+        rules.run(rules_config)
 
-    def run_experiment(self, experiment_dir, max_dirs, parameters, prefix):
-        experiment_dir, file_prefix, configuration = Runner._setup(experiment_dir, '', max_dirs, parameters, {})
-        if experiment_dir:
-            self._run(experiment_dir, file_prefix, configuration, prefix)
+        command = self._generate_command(dataset_config['output'].name, rules_config['output'].name)
+        print(self.print_info(configuration, name))
+        result = self._run_process(command)
 
+        return result
+
+    def print_info(self, configuration, name):
+        info_line = []
+        for key in sorted(configuration):
+            info_line.append("[{0}={1}]".format(str(key), str(configuration[key])))
+
+        return "[{2}] {0:10s}: {1}".format(str(self), ''.join(info_line), name)
 
     def _alter_rules_config(self, config):
-        config['type'] = 'datalog'
+        pass
 
     def __str__(self):
         return "Runner"
 
-    def _run(self, experiment_dir, file_prefix, configuration, prefix):
-        dataset_config = configuration.copy()
-        dataset_output = os.path.join(experiment_dir, file_prefix + '-dataset.txt')
-        if not os.path.isfile(dataset_output):
-            dataset_config['output'] = open(dataset_output, 'w')
-            datasets.run(dataset_config)
-
-        rules_config = configuration.copy()
-        rules_output = os.path.join(experiment_dir, file_prefix + '-rules.txt')
-        if not os.path.isfile(rules_output):
-            rules_config['output'] = open(rules_output, 'w')
-            rules_config['data'] = open(dataset_output, 'r')
-
-            # FIXME: Use generic format
-            rules_config['data_format'] = 'datalog'
-            rules_config['print'] = False
-
-            self._alter_rules_config(rules_config)
-            rules.run(rules_config)
-
-        command = self._generate_command(dataset_output, rules_output)
-        if command:
-            print("{0} {1}/{2}".format(prefix, experiment_dir, file_prefix))
-            self._run_process(command, experiment_dir, file_prefix)
-
-            os.remove(dataset_output)
-            os.remove(rules_output)
-
     def _generate_command(self, dataset, rules):
         return None
 
-
-    def _run_process(self, command, experiment_dir, file_prefix):
-        run_time = ""
+    def _run_process(self, command):
         try:
             start = time.perf_counter()
             subprocess.run(command, stdout=subprocess.DEVNULL, timeout=self.TIME_OUT, stderr=subprocess.DEVNULL)
             end = time.perf_counter()
             run_time = "{0:.5f}".format(end - start)
+            print(run_time, file=sys.stderr)
         except subprocess.TimeoutExpired:
             print("Timeout expired", file=sys.stderr)
-            run_time = "Timeout expired"
+            run_time = None
 
-        with open(os.path.join(experiment_dir, file_prefix + '-result.txt'), 'a') as res_f:
-            print("Time: {}".format(run_time), file=res_f)
+        return run_time
 
 
 class GringoRunner(Runner):
@@ -156,31 +230,46 @@ class LParseRunner(Runner):
 
 
 class Consumer(threading.Thread):
-    def __init__(self, grid_search, queue):
+    def __init__(self, grid_search, queue, name):
         super().__init__()
         self._grid_search = grid_search
         self._queue = queue
+        self._name = name
 
     def run(self):
         while not self._grid_search.stopped:
-            exp_num, configuration = self._queue.get()
-            if configuration[-1]['param'] == 'runner' and isinstance(configuration[-1]['value'], Runner):
-                prefix = "[{0:6d}/{1:6d}]".format(exp_num, self._grid_search._num_of_experiments)
-                configuration[-1]['value'].run_experiment(self._grid_search._exp_dir, self._grid_search._max_dirs, configuration, prefix)
-            else:
-                print("No runner for: ", configuration)
+            configuration, runners = self._queue.get()
+            if configuration is None:
+                break
+
+            for runner in self._grid_search._runners:
+                if self._grid_search.stopped:
+                    break
+
+                if str(runner) not in runners:
+                    result = runner.run_experiment(configuration, self._name)
+                    self._grid_search.store_result(configuration, runner, result)
+
+            self._queue.task_done()
 
 
 class GridSearch:
-    def __init__(self, parameters, max_dirs):
+    GROUNDER_PARAM="grounder"
+
+    def __init__(self, parameters, runners):
         self._parameters = parameters
+        self._runners = runners
         self._create_experiment_dir()
-        self._max_dirs = max_dirs
+
+        params_runners = parameters + [Parameter(self.GROUNDER_PARAM, [str(runners[0])])]
+        self._result_store = ResultStore(self._exp_dir, params_runners)
+
         self.stopped = False
 
         self._num_of_experiments = 1
         for param in parameters:
             self._num_of_experiments *= param.cardinality()
+
 
     def _create_experiment_dir(self):
         self._exp_dir = os.path.join("experiments", "grid-search")
@@ -189,32 +278,39 @@ class GridSearch:
         except FileExistsError:
             pass
 
-    def _generate_configuration(self, index, configuration):
-        if self.stopped:
-            return
+    def store_result(self, configuration, runner, value):
+        configuration[self.GROUNDER_PARAM] = str(runner)
 
-        if index >= len(self._parameters):
-            yield configuration
-        else:
-            for param in self._parameters[index].get_options():
-                yield from self._generate_configuration(index+1, configuration + [param])
+        self._result_store.insert(configuration, value)
+
+    def _get_random_configuration(self):
+        rand = random.randrange(0, self._num_of_experiments)
+        configuration = {}
+
+        for param in reversed(self._parameters):
+            configuration[param.name] = param.options[rand % param.cardinality()]
+            rand = rand // param.cardinality()
+
+        return configuration
 
     def run(self, num_threads, max_time):
         self._queue = queue.Queue(maxsize=num_threads)
-        consumers = [Consumer(self, self._queue) for i in range(num_threads)]
+        consumers = [Consumer(self, self._queue, i) for i in range(num_threads)]
 
         for consumer in consumers:
             consumer.start()
 
         start = time.time()
         print("Started on {}".format(time.strftime("%X")), file=sys.stderr)
-        exp_num = 0
+        print("Running for {}s, ETA: {}".format(max_time, (datetime.datetime.fromtimestamp(start + max_time).strftime("%X"))))
+        configuration = None
         try:
-            for configuration in self._generate_configuration(0, []):
+            while not self.stopped:
                 elapsed = time.time() - start
-                if elapsed + 2*Runner.TIME_OUT >= max_time:
+                if elapsed + Runner.TIME_OUT >= max_time:
                     print("Time expired, clearing queue", file=sys.stderr)
                     print("Ended on {}".format(time.strftime("%X")), file=sys.stderr)
+                    self.stopped = True
                     while not self._queue.empty():
                         try:
                             self._queue.get(False)
@@ -222,13 +318,27 @@ class GridSearch:
                             continue
                         self._queue.task_done()
 
+                    for i in range(num_threads):
+                        self._queue.put((None, None))
+
                     break
+
+                if configuration is None:
+                    configuration = self._get_random_configuration()
+
+                stored = self._result_store.find(configuration)
+                if len(stored) < len(self._runners):
+                    runners = [r[self.GROUNDER_PARAM] for r in stored]
+                    try:
+                        self._queue.put((configuration, runners), timeout=Runner.TIME_OUT)
+                        configuration = None
+                    except queue.Full:
+                        pass
                 else:
-                    exp_num += 1
-                    self._queue.put((exp_num, configuration))
+                    configuration = None
 
         except KeyboardInterrupt:
-            pass
+            self.stopped = True
 
         self.stopped = True
         for consumer in consumers:
@@ -259,17 +369,17 @@ if __name__ == "__main__":
         Parameter('max_columns', [5, 10, 30]),
         Parameter('width', [1, 20, 50]),
         Parameter('weight', np.linspace(0, 1, 4)),
-        Parameter('duplicity', [0, 1, 5]),
+        Parameter('duplicity', [0, 1]),
         Parameter('unique', [False, True]),
         Parameter('all', [False, True]),
-        Parameter('runner', [
+    ],
+        [
             GringoRunner(),
             PrologRunner(),
             DlvRunner(),
             LParseRunner()
-        ]),
-    ],
-    5)
+        ]
+    )
 
     grid_search.run(args.threads, args.time)
     print("All done", file=sys.stderr)
