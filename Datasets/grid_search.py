@@ -307,7 +307,7 @@ class GridSearch:
         try:
             while not self.stopped:
                 elapsed = time.time() - start
-                if elapsed + 2*Runner.TIME_OUT >= max_time:
+                if elapsed + Runner.TIME_OUT >= max_time:
                     print("Time expired, clearing queue", file=sys.stderr)
                     print("Ended on {}".format(time.strftime("%X")), file=sys.stderr)
                     self.stopped = True
