@@ -63,6 +63,98 @@ class PrologExporter(DatalogExporter):
         super()._finalize(values)
 
 
+class SQLExporter(Exporter):
+    def _export_table(self, table):
+        self._export_table_definition(table)
+        self._export_table_data(table)
+
+    def _export_rule(self, rule):
+        definition = "CREATE OR REPLACE TEMPORARY VIEW AS {query};"
+        select = "SELECT {head} FROM {tables}"
+        variable_reg = re.compile('(?P<name>[A-Z]+)(?P<index>[0-9]+)_?(?P<dup>[0-9]+)?')
+        print(rule.head, rule.body)
+
+        select_cols = []
+        for variable in rule.head:
+            match = variable_reg.match(variable)
+            if match:
+                select_cols.append(
+                    "{0}.{0}_col_{1}".format(
+                        match.group('name').lower(),
+                        match.group('index').lower()
+                    )
+                )
+        print(select_cols)
+
+        joins = {}
+        froms = set()
+        constraints = []
+        parsed_vars = {}
+
+        for i, r in enumerate(rule.body):
+            if r.name not in froms and r.name not in joins:
+                froms.add(r.name)
+
+            for v in r.variables:
+                if v not in parsed_vars:
+                    m = variable_reg.match(v)
+                    parsed_vars[v] = {
+                        'name': m.group('name'),
+                        'index': m.group('index'),
+                        'dup': m.group('dup')
+                    }
+
+
+
+
+
+    def _export_table_definition(self, table):
+        definition = """
+DROP TABLE IF EXISTS {name};
+CREATE TABLE {name} (
+  {columns},
+  PRIMARY KEY ({primary})
+);
+        """
+
+        column = "{name} character varying(255) NOT NULL {relation}"
+        relation = "REFERENCES {reftable} ({refcolumn})"
+
+        columns = []
+        for index in range(len(table._data[0])):
+            name = table._id + "_col_" + str(index)
+            rel_string = ""
+            if index in table._relations:
+                rel = table._relations[index]
+                rel_string = relation.format(reftable=rel._id, refcolumn=rel._id+"_col_0")
+
+            columns.append(
+                column.format(name=name, relation=rel_string)
+            )
+
+        print(definition.format(
+            name=table._id,
+            primary=table._id + "_col_0",
+            columns=",\n  ".join(columns),
+        ), file=self._file)
+
+    def _export_table_data(self, table):
+        insert_query = "INSERT INTO {table} VALUES {values};"
+
+        data = []
+        for row in table._data:
+            row_data = []
+            for column in row:
+                row_data.append("'{}'".format(column))
+
+            data.append("({})".format(",".join(row_data)))
+
+        print(
+            insert_query.format(table=table._id, values=",".join(data)),
+            file=self._file
+        )
+
+
 class Importer:
     """
     Parse the structure of the given dataset from the file header
