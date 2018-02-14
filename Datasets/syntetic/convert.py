@@ -270,8 +270,8 @@ class DatalogImporter(Importer):
 
 class SQLImporter(Importer):
     def _parse(self, print_to_stdout):
-        table_def_reg = re.compile('CREATE TABLE `?(?P<name>[^` ]+)`?\s* \(')
-        insert_reg = re.compile('INSERT INTO `?(?P<name>[^` ]+)`? VALUES (?P<data>.*);')
+        table_def_reg = re.compile('CREATE TABLE (?P<name>[^ ]+)\s* \(')
+        insert_reg = re.compile('INSERT INTO (?P<name>[^ ]+) VALUES (?P<data>.*);')
 
         data = {}
 
@@ -313,8 +313,8 @@ class SQLImporter(Importer):
 
     def _table_def(self, name):
         end_table_def = re.compile('\s*\).*;')
-        column_reg = re.compile('\s*`?(?P<column>[^` ]+)`?')
-        relation_reg = re.compile('\s*CONSTRAINT .* FOREIGN KEY \(`(?P<col>[^`]+)`\) REFERENCES `(?P<table>[^`]+)`')
+        column_reg = re.compile('\s*(?P<column>[a-z_0-9]+)')
+        ref_reg = re.compile('REFERENCES (?P<table>[^ ]+)\s*\((?P<col>[a-z_0-9]+)\)')
 
         table_def = {
             'name': name,
@@ -332,15 +332,15 @@ class SQLImporter(Importer):
             match = column_reg.match(line)
             if match:
                 columns[match.group('column')] = col_index
-                col_index += 1
                 table_def['arity'] += 1
-                continue
 
-            match = relation_reg.match(line)
-            if match:
-                table_def['relations'][columns[match.group('col')]] = match.group('table')
-                table_def['arity'] += 1
-                continue
+                match = ref_reg.search(line)
+                if match:
+                    table_def['relations'][col_index] = match.group('table')
+                    table_def['arity'] += 1
+
+                col_index += 1
+
 
 if __name__ == "__main__":
     with open(sys.argv[1], 'r') as f:
