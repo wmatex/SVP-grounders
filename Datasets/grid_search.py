@@ -122,7 +122,7 @@ class ResultStore:
                 self._cursor.execute(sql_query, config)
                 self._connection.commit()
             except sqlite3.IntegrityError:
-                print("Unique constraint failed: {}".format(sql_query))
+                print("Unique constraint failed: {}".format(config))
                 pass
 
     def __del__(self):
