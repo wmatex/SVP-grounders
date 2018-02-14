@@ -69,8 +69,92 @@ class SQLExporter(Exporter):
         self._export_table_data(table)
 
     def _export_rule(self, rule):
-        definition = "CREATE OR REPLACE TEMPORARY VIEW AS {query};"
+        definition = "CREATE OR REPLACE TEMPORARY VIEW {name} AS {query};"
         select = "SELECT {head} FROM {tables}"
+
+        select_cols = []
+        fmt = {}
+        for i, variable in enumerate(rule.head):
+            self._parse_var(variable, fmt)
+            select_cols.append(
+                "{0}.{0}_col_{1} as {2}_col_{3}".format(
+                    fmt[variable]['name'].lower(),
+                    fmt[variable]['index'].lower(),
+                    "rule_" + rule._id, i
+                )
+            )
+
+        froms = set()
+        constraints = []
+        parsed_vars = {}
+
+        for i, r in enumerate(rule.body):
+            if r['name'] not in froms:
+                froms.add(r['name'])
+
+            for iv, v in enumerate(r['variables']):
+                self._parse_var(v, parsed_vars)
+                for j in range(iv+1, len(r['variables'])):
+                    # Same variable in the same body => add constraint
+                    if v == r['variables'][j]:
+                        constraints.append("{table}.{table}_col_{index1} = {table}.{table}_col_{index2}".format(
+                            table=r['name'],
+                            index1=parsed_vars[v]['index'],
+                            index2=j
+                        ))
+
+                for j in range(i+1, len(rule.body)):
+                    for i2, vv in enumerate(rule.body[j]['variables']):
+                        self._parse_var(vv, parsed_vars)
+
+                        if v == vv:
+                            if rule.body[j]['name'] not in froms:
+                                froms.add(rule.body[j]['name'])
+
+                            if parsed_vars[v]['name'].lower() == r['name']:
+                                source_index = parsed_vars[v]['index']
+                                target_index = i2
+                            else:
+                                source_index = iv
+                                target_index = parsed_vars[v]['index']
+
+                                if rule.body[j]['name'].startswith('rule_'):
+                                    target_index = i2
+
+                            constraints.append(
+                                "{source}.{source}_col_{source_index} = {target}.{target}_col_{target_index}".format(
+                                    source=r['name'],
+                                    target=rule.body[j]['name'],
+                                    source_index=source_index,
+                                    target_index=target_index
+                                )
+                            )
+
+        from_string = ', '.join(froms)
+
+        where_query = ""
+        if len(constraints) > 0:
+            where_query = "WHERE {}".format(" AND ".join(constraints))
+
+        print(definition.format(query=select.format(
+            head=', '.join(select_cols),
+            tables="{} {}".format(
+                from_string,
+                where_query
+            )
+        ), name="rule_" + rule._id), file=self._file)
+        print("SELECT * FROM rule_{};".format(rule._id), file=self._file)
+
+
+    def _parse_var(self, var, parsed):
+        variable_reg = re.compile('(?P<name>[A-Z]+)(?P<index>[0-9]+)_?(?P<dup>[0-9]+)?')
+        if var not in parsed:
+            m = variable_reg.match(var)
+            parsed[var] = {
+                'name': m.group('name'),
+                'index': m.group('index'),
+                'dup': m.group('dup')
+            }
 
     def _export_table_definition(self, table):
         definition = """
