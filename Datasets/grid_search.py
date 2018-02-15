@@ -14,6 +14,7 @@ import sqlite3
 import tempfile
 import random
 import datetime
+import multiprocessing
 
 
 class Parameter:
@@ -86,6 +87,14 @@ class ResultStore:
         self._cursor.execute(sql_query)
         self._connection.commit()
 
+    def find_uncompleted(self, parameters, max_count):
+        sql = "SELECT {params}, count(*) as count_grounders FROM {table} GROUP BY {params} HAVING count_grounders > 1 AND count_grounders < {max_count};"
+        params = [ResultStore._transform(p) for p in parameters]
+
+        with self._lock:
+            self._cursor.execute(sql.format(table=self.TABLE_NAME, params=', '.join(params), max_count=max_count))
+            return self._cursor.fetchall()
+
     def find(self, configuration):
         sql = "SELECT * FROM {table} WHERE {constraints};"
 
@@ -135,6 +144,9 @@ class Runner:
     def run_experiment(self, configuration, name):
         dataset_config = configuration.copy()
         dataset_config['output'] = tempfile.NamedTemporaryFile(mode='w+')
+        dataset_config['format'] = 'datalog'
+
+        self._alter_dataset_config(dataset_config)
         datasets.run(dataset_config)
 
         rules_config = configuration.copy()
@@ -149,9 +161,12 @@ class Runner:
         self._alter_rules_config(rules_config)
         rules.run(rules_config)
 
+        self.setup()
+
         command = self._generate_command(dataset_config['output'].name, rules_config['output'].name)
         print(self.print_info(configuration, name))
         result = self._run_process(command)
+        self.destroy()
 
         return result
 
@@ -165,16 +180,26 @@ class Runner:
     def _alter_rules_config(self, config):
         pass
 
+    def _alter_dataset_config(self, config):
+        pass
+
     def __str__(self):
         return "Runner"
 
     def _generate_command(self, dataset, rules):
         return None
 
+    def setup(self):
+        pass
+
+    def destroy(self):
+        pass
+
     def _run_process(self, command):
         try:
             start = time.perf_counter()
             subprocess.run(command, stdout=subprocess.DEVNULL, timeout=self.TIME_OUT, stderr=subprocess.DEVNULL)
+            #subprocess.run(command, timeout=self.TIME_OUT)
             end = time.perf_counter()
             run_time = "{0:.5f}".format(end - start)
             print(run_time, file=sys.stderr)
@@ -228,6 +253,46 @@ class LParseRunner(Runner):
     def __str__(self):
         return 'LParse'
 
+class PostgreSQLRunner(Runner):
+    PORT='55556'
+    BUILD_DIR='../Grounders/postgresql/build/bin'
+    DB_NAME='experiment'
+
+    def __init__(self):
+        self._data_dir = tempfile.TemporaryDirectory()
+        subprocess.run([os.path.join(self.BUILD_DIR, 'initdb'), '-D', self._data_dir.name])
+        self._server = multiprocessing.Process(target=self._start_server)
+        self._server.start()
+
+    def _start_server(self):
+        subprocess.run([os.path.join(self.BUILD_DIR, 'postgres'), '-p', self.PORT, '-D', self._data_dir.name])
+
+    def _alter_rules_config(self, config):
+        config['data_format'] = 'sql'
+        config['type'] = 'sql'
+
+    def _alter_dataset_config(self, config):
+        config['format'] = 'sql'
+
+    def setup(self):
+        subprocess.run([os.path.join(self.BUILD_DIR, 'createdb'), '-p', self.PORT, self.DB_NAME])
+
+    def destroy(self):
+        subprocess.run([os.path.join(self.BUILD_DIR, 'dropdb'), '-p', self.PORT, self.DB_NAME])
+
+    def _generate_command(self, dataset, rules):
+        return [
+            os.path.join(self.BUILD_DIR, 'psql'), '-p', self.PORT, '-f', dataset, '-f', rules, self.DB_NAME
+        ]
+
+    def __str__(self):
+        return 'PostgreSQL'
+
+    def __del__(self):
+        self._server.terminate()
+        self._server.join()
+
+
 
 class Consumer(threading.Thread):
     def __init__(self, grid_search, queue, name):
@@ -265,6 +330,7 @@ class GridSearch:
         self._result_store = ResultStore(self._exp_dir, params_runners)
 
         self.stopped = False
+        self._uncompleted_configs = []
 
         self._num_of_experiments = 1
         for param in parameters:
@@ -284,14 +350,18 @@ class GridSearch:
         self._result_store.insert(configuration, value)
 
     def _get_random_configuration(self):
-        rand = random.randrange(0, self._num_of_experiments)
-        configuration = {}
+        if len(self._uncompleted_configs) > 0:
+            return self._uncompleted_configs.pop()
+        else:
+            random.seed()
+            rand = random.randrange(0, self._num_of_experiments)
+            configuration = {}
 
-        for param in reversed(self._parameters):
-            configuration[param.name] = param.options[rand % param.cardinality()]
-            rand = rand // param.cardinality()
+            for param in reversed(self._parameters):
+                configuration[param.name] = param.options[rand % param.cardinality()]
+                rand = rand // param.cardinality()
 
-        return configuration
+            return configuration
 
     def run(self, num_threads, max_time):
         self._queue = queue.Queue(maxsize=num_threads)
@@ -303,6 +373,21 @@ class GridSearch:
         start = time.time()
         print("Started on {}".format(time.strftime("%X")), file=sys.stderr)
         print("Running for {}s, ETA: {}".format(max_time, (datetime.datetime.fromtimestamp(start + max_time).strftime("%X"))))
+
+        uncompleted = self._result_store.find_uncompleted([p.name for p in self._parameters], len(self._runners))
+        for uncom in uncompleted:
+            config = {}
+            for k in uncom.keys():
+                ck = k
+                if k == 'count_grounders':
+                    continue
+                elif k.startswith('param_'):
+                    ck = k[6:]
+
+                config[ck] = uncom[k]
+            self._uncompleted_configs.append(config)
+
+
         configuration = None
         try:
             while not self.stopped:
@@ -375,6 +460,7 @@ if __name__ == "__main__":
     ],
         [
             GringoRunner(),
+            PostgreSQLRunner(),
             PrologRunner(),
             DlvRunner(),
             LParseRunner()

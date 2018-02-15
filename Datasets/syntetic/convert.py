@@ -64,6 +64,16 @@ class PrologExporter(DatalogExporter):
 
 
 class SQLExporter(Exporter):
+    def __init__(self, file=sys.stdout):
+        super().__init__(file)
+        self._constraints = []
+
+    def _finalize(self, values):
+        for constraint in self._constraints:
+            print(constraint, file=self._file)
+
+        super()._finalize(values)
+
     def _export_table(self, table):
         self._export_table_definition(table)
         self._export_table_data(table)
@@ -77,7 +87,7 @@ class SQLExporter(Exporter):
         for i, variable in enumerate(rule.head):
             self._parse_var(variable, fmt)
             select_cols.append(
-                "{0}.{0}_col_{1} as {2}_col_{3}".format(
+                "\"{0}\".{0}_col_{1} as {2}_col_{3}".format(
                     fmt[variable]['name'].lower(),
                     fmt[variable]['index'].lower(),
                     "rule_" + rule._id, i
@@ -97,7 +107,7 @@ class SQLExporter(Exporter):
                 for j in range(iv+1, len(r['variables'])):
                     # Same variable in the same body => add constraint
                     if v == r['variables'][j]:
-                        constraints.append("{table}.{table}_col_{index1} = {table}.{table}_col_{index2}".format(
+                        constraints.append("\"{table}\".{table}_col_{index1} = \"{table}\".{table}_col_{index2}".format(
                             table=r['name'],
                             index1=parsed_vars[v]['index'],
                             index2=j
@@ -122,7 +132,7 @@ class SQLExporter(Exporter):
                                     target_index = i2
 
                             constraints.append(
-                                "{source}.{source}_col_{source_index} = {target}.{target}_col_{target_index}".format(
+                                "\"{source}\".{source}_col_{source_index} = \"{target}\".{target}_col_{target_index}".format(
                                     source=r['name'],
                                     target=rule.body[j]['name'],
                                     source_index=source_index,
@@ -130,7 +140,7 @@ class SQLExporter(Exporter):
                                 )
                             )
 
-        from_string = ', '.join(froms)
+        from_string = ', '.join(['"{}"'.format(f) for f in froms])
 
         where_query = ""
         if len(constraints) > 0:
@@ -158,26 +168,25 @@ class SQLExporter(Exporter):
 
     def _export_table_definition(self, table):
         definition = """
-DROP TABLE IF EXISTS {name};
-CREATE TABLE {name} (
+DROP TABLE IF EXISTS "{name}";
+CREATE TABLE "{name}" (
   {columns},
   PRIMARY KEY ({primary})
 );
         """
 
-        column = "{name} character varying(255) NOT NULL {relation}"
-        relation = "REFERENCES {reftable} ({refcolumn})"
+        column = "{name} character varying(255) NOT NULL"
+        relation = "ALTER TABLE \"{table}\" ADD CONSTRAINT cons_{table}_{refcolumn} FOREIGN KEY ({column}) REFERENCES \"{reftable}\" ({refcolumn});"
 
         columns = []
         for index in range(len(table._data[0])):
             name = table._id + "_col_" + str(index)
-            rel_string = ""
             if index in table._relations:
                 rel = table._relations[index]
-                rel_string = relation.format(reftable=rel._id, refcolumn=rel._id+"_col_0")
+                self._constraints.append(relation.format(table=table._id, reftable=rel._id, column=name, refcolumn=rel._id+"_col_0"))
 
             columns.append(
-                column.format(name=name, relation=rel_string)
+                column.format(name=name)
             )
 
         print(definition.format(
@@ -187,7 +196,7 @@ CREATE TABLE {name} (
         ), file=self._file)
 
     def _export_table_data(self, table):
-        insert_query = "INSERT INTO {table} VALUES {values};"
+        insert_query = "INSERT INTO \"{table}\" VALUES {values};"
 
         data = []
         for row in table._data:
@@ -270,8 +279,11 @@ class DatalogImporter(Importer):
 
 class SQLImporter(Importer):
     def _parse(self, print_to_stdout):
-        table_def_reg = re.compile('CREATE TABLE (?P<name>[^ ]+)\s* \(')
-        insert_reg = re.compile('INSERT INTO (?P<name>[^ ]+) VALUES (?P<data>.*);')
+        self._metadata = {}
+
+        table_def_reg = re.compile('CREATE TABLE "?(?P<name>[a-z0-9]+)"?\s* \(')
+        insert_reg = re.compile('INSERT INTO "?(?P<name>[a-z0-9]+)"? VALUES (?P<data>.*);')
+        ref_reg = re.compile('ALTER TABLE "?(?P<table>[a-z0-9]+)"? ADD CONSTRAINT [a-z_0-9]* FOREIGN KEY \((?P<column>[a-z_0-9]+)\) REFERENCES "?(?P<reftable>[a-z0-9]+)"? \((?P<refcolumn>[a-z_0-9]+)\)')
 
         data = {}
 
@@ -288,6 +300,12 @@ class SQLImporter(Importer):
                 name = match.group('name').lower()
                 data[name] += self._parse_data(name, match.group('data'))
                 continue
+
+            match = ref_reg.match(line)
+            if match:
+                self.predicates[match.group('table')]['relations'][self._metadata[match.group('table')]['columns'][match.group('column')]] = match.group('reftable')
+                continue
+
 
         tables = {}
         for table in data:
@@ -314,14 +332,15 @@ class SQLImporter(Importer):
     def _table_def(self, name):
         end_table_def = re.compile('\s*\).*;')
         column_reg = re.compile('\s*(?P<column>[a-z_0-9]+)')
-        ref_reg = re.compile('REFERENCES (?P<table>[^ ]+)\s*\((?P<col>[a-z_0-9]+)\)')
 
         table_def = {
             'name': name,
             'arity': 0,
             'relations': {}
         }
-        columns = {}
+        self._metadata[name] = {
+            'columns': {}
+        }
         col_index = 0
 
         for line in self._file:
@@ -331,13 +350,9 @@ class SQLImporter(Importer):
 
             match = column_reg.match(line)
             if match:
-                columns[match.group('column')] = col_index
+                self._metadata[name]['columns'][match.group('column')] = col_index
                 table_def['arity'] += 1
 
-                match = ref_reg.search(line)
-                if match:
-                    table_def['relations'][col_index] = match.group('table')
-                    table_def['arity'] += 1
 
                 col_index += 1
 
