@@ -78,67 +78,88 @@ class SQLExporter(Exporter):
         self._export_table_definition(table)
         self._export_table_data(table)
 
+    def _preprocess(self, rule):
+        metadata = {
+            'tables': {},
+            'vars': {}
+        }
+
+        for table in rule._tables:
+            metadata['tables'][table['name']] = table
+
+        for body in rule.body:
+            for index, var in enumerate(body['variables']):
+                self._parse_var(var, metadata['vars'])
+
+                if body['name'] not in metadata['vars'][var]['predicates']:
+                    metadata['vars'][var]['predicates'][body['name']] = {
+                        'name': body['name'],
+                        'pos': index
+                    }
+
+
+        return metadata
+
+    def _create_constraint(self, left, leftindex, right, rightindex):
+        return "\"{left}\".{left}_col_{leftindex} = \"{right}\".{right}_col_{rightindex}".format(
+            left=left,
+            leftindex=leftindex,
+            right=right,
+            rightindex=rightindex
+        )
+
     def _export_rule(self, rule):
         definition = "CREATE OR REPLACE TEMPORARY VIEW {name} AS {query};"
-        select = "SELECT {head} FROM {tables}"
+        select = "SELECT DISTINCT {head} FROM {tables}"
 
-        select_cols = []
-        fmt = {}
-        for i, variable in enumerate(rule.head):
-            self._parse_var(variable, fmt)
-            select_cols.append(
-                "\"{0}\".{0}_col_{1} as {2}_col_{3}".format(
-                    fmt[variable]['name'].lower(),
-                    fmt[variable]['index'].lower(),
-                    "rule_" + rule._id, i
-                )
-            )
+        metadata = self._preprocess(rule)
 
         froms = set()
         constraints = []
-        parsed_vars = {}
+        for table in rule._tables:
+            for key, rel in table['relations'].items():
+                if rel in metadata['tables']:
+                    constraints.append(self._create_constraint(
+                        table['name'], key,
+                        rel, 0
+                    ))
 
-        for i, r in enumerate(rule.body):
-            if r['name'] not in froms:
-                froms.add(r['name'])
+            froms.add(table['name'])
 
-            for iv, v in enumerate(r['variables']):
-                self._parse_var(v, parsed_vars)
-                for j in range(iv+1, len(r['variables'])):
-                    # Same variable in the same body => add constraint
-                    if v == r['variables'][j]:
-                        constraints.append("\"{table}\".{table}_col_{index1} = \"{table}\".{table}_col_{index2}".format(
-                            table=r['name'],
-                            index1=parsed_vars[v]['index'],
-                            index2=j
-                        ))
+        for relation in rule.body:
+            if relation['name'] not in froms:
+                froms.add(relation['name'])
 
-                for j in range(i+1, len(rule.body)):
-                    for i2, vv in enumerate(rule.body[j]['variables']):
-                        self._parse_var(vv, parsed_vars)
 
-                        if v == vv:
-                            if rule.body[j]['name'] not in froms:
-                                froms.add(rule.body[j]['name'])
+        for subrule in rule._rules:
+            for subrule_var in subrule.head:
+                for body_var in metadata['vars']:
+                    if subrule_var == body_var:
+                        for pred_name, predicate in metadata['vars'][subrule_var]['predicates'].items():
+                            if predicate['name'] != 'rule_' + subrule._id:
+                                constraints.append(self._create_constraint(
+                                    'rule_' + subrule._id, metadata['vars'][subrule_var]['predicates']['rule_'+subrule._id]['pos'],
+                                    predicate['name'], predicate['pos']
+                                ))
 
-                            if parsed_vars[v]['name'].lower() == r['name']:
-                                source_index = parsed_vars[v]['index']
-                                target_index = i2
-                            else:
-                                source_index = iv
-                                target_index = parsed_vars[v]['index']
+        select_cols = []
+        for head_index, head_var in enumerate(rule.head):
+            from_table = metadata['vars'][head_var]['name'].lower()
+            from_index = metadata['vars'][head_var]['index']
 
-                                if rule.body[j]['name'].startswith('rule_'):
-                                    target_index = i2
+            if metadata['vars'][head_var]['name'].lower() not in froms:
+                for pred_name, predicate in metadata['vars'][head_var]['predicates'].items():
+                    if pred_name.startswith('rule_'):
+                        from_table = pred_name
+                        from_index = predicate['pos']
+                        break
 
-                            constraints.append(
-                                "\"{source}\".{source}_col_{source_index} = \"{target}\".{target}_col_{target_index}".format(
-                                    source=r['name'],
-                                    target=rule.body[j]['name'],
-                                    source_index=source_index,
-                                    target_index=target_index
-                                )
-                            )
+            select_cols.append(
+                "\"{0}\".{0}_col_{1} as {2}_col_{3}".format(
+                    from_table, from_index,
+                    "rule_" + rule._id, head_index
+                )
+            )
 
         from_string = ', '.join(['"{}"'.format(f) for f in froms])
 
@@ -163,7 +184,8 @@ class SQLExporter(Exporter):
             parsed[var] = {
                 'name': m.group('name'),
                 'index': m.group('index'),
-                'dup': m.group('dup')
+                'dup': m.group('dup'),
+                'predicates': {}
             }
 
     def _export_table_definition(self, table):
