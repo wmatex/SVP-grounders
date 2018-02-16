@@ -199,7 +199,6 @@ class Runner:
         try:
             start = time.perf_counter()
             subprocess.run(command, stdout=subprocess.DEVNULL, timeout=self.TIME_OUT, stderr=subprocess.DEVNULL)
-            #subprocess.run(command, timeout=self.TIME_OUT)
             end = time.perf_counter()
             run_time = "{0:.5f}".format(end - start)
             print(run_time, file=sys.stderr)
@@ -265,7 +264,7 @@ class PostgreSQLRunner(Runner):
         self._server.start()
 
     def _start_server(self):
-        subprocess.run([os.path.join(self.BUILD_DIR, 'postgres'), '-p', self.PORT, '-D', self._data_dir.name])
+        subprocess.run([os.path.join(self.BUILD_DIR, 'postgres'), '-p', self.PORT, '-D', self._data_dir.name, '-c', 'logging_collector=on', '-c', 'log_directory=/tmp/pg_log'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def _alter_rules_config(self, config):
         config['data_format'] = 'sql'
@@ -388,6 +387,7 @@ class GridSearch:
             self._uncompleted_configs.append(config)
 
 
+        print("Have #{} uncompleted jobs".format(len(uncompleted)))
         configuration = None
         try:
             while not self.stopped:
