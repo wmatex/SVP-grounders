@@ -2,7 +2,6 @@
 Create rules from defined datasets based on provided features.
 """
 
-import random
 import argparse
 import sys
 import numpy as np
@@ -10,8 +9,6 @@ from syntetic import weights
 from syntetic import convert
 from syntetic.utils import generate_identifier
 
-random.seed(0)
-np.random.seed(0)
 
 
 def parse_arguments():
@@ -106,7 +103,7 @@ class Rule:
     def _create(self, tables, rules, size_of_body, first_item_weight, rules_proportion):
         num_of_tables = min(size_of_body, len(tables))
 
-        tables_list = list(tables)
+        tables_list = sorted(list(tables))
 
         tables_list.sort(key=lambda k: tables[k]['arity'])
         rules_list = sorted(rules, key=lambda k: len(k.head))
@@ -179,6 +176,9 @@ class Rule:
         :param boolean unique_names: Whether to use unique variable names for each duplicate body predicate
         :param boolean all_body: Whether to include all variables from the body predicates in the head of the rule
         """
+        self.duplicity = duplicity
+        self.unique_name = unique_names
+        self.all_body = all_body
         self.head = self._create_head(duplicity, unique_names, all_body)
 
         for t in self._tables:
@@ -206,6 +206,7 @@ def run(parameters):
         importer = convert.DatalogImporter(parameters['data'], parameters['print'])
 
     rules = []
+    np.random.seed(42)
 
     for i in range(parameters['base_rules']):
         r = Rule(i, importer.predicates, [], parameters['width'], parameters['weight'], 0)
