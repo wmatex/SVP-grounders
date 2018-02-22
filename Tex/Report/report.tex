@@ -1,0 +1,227 @@
+\documentclass[12pt,oneside]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage{amssymb}
+\usepackage{float}
+\usepackage{minted}
+\usepackage{amsmath}
+\usepackage{mathtools}
+
+\DeclarePairedDelimiter{\floor}{\lfloor}{\rfloor}
+
+\begin{document}
+
+\title{Software project \\
+\large Efficient grounding of hierarchical logical templates}
+
+\author{Matěj Vavřinec}
+\date{\today}
+
+\maketitle
+
+\begin{abstract}
+
+\end{abstract}
+
+
+\section{Introduction}
+
+
+\section{Preliminaries}
+\subsection{First-order logic}
+\label{section:preliminaries:logic}
+We consider a function-free first-order logic, with formulas created from set of constants,
+variables, $n$-ary predicates ($n \in \mathbb{N}$) and propositional connectives $\wedge, \vee, $. A
+\textit{term} is a constant or variable. An \textit{atom} is a $n$-ary predicate for some $n \in
+\mathbb{N}$ applied to $n$ terms. A \textit{ground atom} is an atom, where each term consists only
+of constants. A \textit{literal} is either a term or a negation of a term. A \textit{clause} is a
+disjuntion of literals. A clause is called \textit{definite} (\textit{rule}) if it contains exactly
+one positive literal. To increase readability a rule $h \vee \neg b_1 \vee \neg b_2 \vee \dots \vee
+\neg b_n$ will be often written as $h \leftarrow b_1 \wedge b_2 \wedge \dots \wedge b_n$ as it is
+often used in logic programs. The literal $h$ is referred to as \textit{head} and the conjunction of
+literals as \textit{body}. Also to avoid confusion constants will be written in lowercase letters
+(e.g. \textit{anne}) while variables with first letter capitalized (e.g. \textit{User}). A set of
+constants and rules is a \textit{logic template}. The \textit{grounded template} is a template
+consisting only of ground atoms.
+
+\textbf{TODO:} define Herbrand model
+
+\section{Generation}
+To be able to evaluate the efficiency of a grounder, one must have a logic template with given set
+of parameters influencing the grounding process in different ways. Some examples as such parameters
+are number of facts, number of relations, arity of the predicates in each rule. As these templates
+don't have to have any meaning or relation to any "real world" analogy, they can be synthetically
+generated using a generator. The generation process is split into two parts: generation of the
+dataset and generation of the hierarchical rules for a given dataset.
+\subsection{Dataset generation}
+A dataset is a set of constants and ground atoms. Another way of describing a
+dataset is a set of SQL tables. The generator has a set of options relating to
+different parameters of the resulting generated dataset. These parameters are:
+
+\begin{itemize}
+    \item \textbf{facts}: The number of different possible truth values for each predicate. More intuitively the number of rows in each table with the SQL analogy.
+
+    \item \textbf{tables}: Number of different predicates.
+
+    \item \textbf{relations}: Number of connections between tables. When viewing the individual tables (predicates) as nodes of multi-graph $G$, the number of relations refers to number of edges in $G$.
+
+    \item \textbf{minimum/maximum number of columns}: The number of columns refers to the arity of a single predicate (or the number of columns of the table representing the predicate). Each table $i$ where $i \in 1 \dots T$, where $T$ is the tables parameter, will have number of columns uniformly distributed between the minimum and maximum number of columns parameters.
+\end{itemize}
+
+Listing \ref{listing:dataset:1} shows a definition of a dataset in the datalog
+format and the listing \ref{listing:dataset:2} shows the same dataset in the SQL format.
+
+\begin{listing}
+    \begin{minted}[frame=leftline]{prolog}
+a(a0).
+a(a1).
+a(a2).
+b(b0, a1).
+b(b1, a0).
+b(b2, a1).
+    \end{minted}
+\caption{Example of a dataset in the datalog format. The parameters used for
+generating the dataset
+were: 3 facts, 2 tables, 1 relation and minimum and maximum number of columns set to
+1.}
+\label{listing:dataset:1}
+\end{listing}
+
+\begin{listing}
+    \begin{minted}[frame=leftline]{SQL}
+DROP TABLE IF EXISTS "a";
+CREATE TABLE "a" (
+  a_col_0 character varying(255) NOT NULL,
+  PRIMARY KEY (a_col_0)
+);
+
+ %INSERT INTO "a" VALUES ('a0'),('a1'),('a2');
+
+DROP TABLE IF EXISTS "b";
+CREATE TABLE "b" (
+  b_col_0 character varying(255) NOT NULL,
+  b_col_1 character varying(255) NOT NULL,
+  PRIMARY KEY (b_col_0)
+);
+
+INSERT INTO "b" VALUES
+('b0','a1'),('b1','a0'),('b2','a1');
+
+ALTER TABLE "b" ADD CONSTRAINT cons_b_b_col_0
+FOREIGN KEY (b_col_1) REFERENCES "a" (a_col_0);
+    \end{minted}
+\caption{The same dataset as in \ref{listing:dataset:1}, but in SQL format.}
+\label{listing:dataset:2}
+
+\end{listing}
+
+
+\subsection{Rules generation}
+The set of rules is generated independently of the dataset, so that each dataset can have different
+set of rules and also the rules can be generated to any given dataset, not only created using the
+generator above but also any other datalog or SQL dataset created in the given format. The generator
+also has number of parameters influencing the properties of the generated rules.
+
+The generated rules are in the
+format described in section \ref{section:preliminaries:logic}: $h \leftarrow d_1 \vee d_2 \vee
+\dots d_n \vee r_1 \vee r_2 \vee \dots \vee d_m$, where $h$ is the head of the rule and the $d_i$,
+$i \in N$, are atoms from the given dataset and $r_j$, $j \in M$, are head atoms of previous
+generated rules. The generated rules are not recursive.
+
+\textbf{TODO:} define more the rules, variables, hierarchy, process of generation.
+
+These parameters of the controlling the genertion are following:
+
+\begin{itemize}
+ \item \textbf{base-rules}: Number of generated rules with just atoms from the given dataset.
+
+ \item \textbf{count}: Number of generated rules with dataset and rule atoms in body.
+
+ \item \textbf{width}: Number of atoms in the bodies of rules.
+
+ \item \textbf{rule-proportion} $\in <0, 1>$: The proportion of rule atoms vs dataset atoms in the
+body of generated rules. The number of rule-atoms in the rule body, $n_r = \floor{r \times W}$,
+where $W$ is the width parameter and the number of table-atoms is $W - n_r$.
+
+ \item \textbf{weight} $\in <0, 1>$: Weight of the table-atom with the least number of columns used
+in the random atom selection. $1$ means that solely this atom will be picked and $\frac{1}{2}$
+means uniform probability distribution of the table-atoms. The function is symetric.
+
+ \item \textbf{all}: If true, that all variables from the body of the rule will also be included in
+the head. If false that only the relation variables are included.
+
+ \item \textbf{duplicity}: Number of duplicit body atoms, e.g. $2$ means, that each body-atom will
+be included twice in the body.
+
+ \item \textbf{unique}: If true that each duplicit body-atom will have unique set of variables.
+\end{itemize}
+
+
+
+Listing \ref{listing:rules:1} shows set of generated rules in the datalog format and listing
+\ref{listing:rules:2} show the same set in the SQL format.
+
+\begin{listing}
+ \begin{minted}[frame=leftline]{prolog}
+rule_a(A0, B0) :- a(A0), b(B0, A0).
+rule_b(A0, B0) :- b(B0, A0), a(A0), rule_a(A0, B0).
+ \end{minted}
+\caption{Example of generated rules in the datalog format. The generation parameters were the
+following: 1 base rule, 1 additional rule (\textit{count}), width = 3, rule-proportion = 0.3,
+weight = 0.5, duplicity = 0.}
+\label{listing:rules:1}
+\end{listing}
+
+\begin{listing}
+ \begin{minted}[frame=leftline]{SQL}
+CREATE OR REPLACE TEMPORARY VIEW rule_a AS
+SELECT DISTINCT "a".a_col_0 as rule_a_col_0, "b".b_col_0 as rule_a_col_1
+FROM "a", "b"
+WHERE "b".b_col_1 = "a".a_col_0;
+SELECT * FROM rule_a;
+
+CREATE OR REPLACE TEMPORARY VIEW rule_b AS
+SELECT DISTINCT "a".a_col_0 as rule_b_col_0, "b".b_col_0 as rule_b_col_1
+FROM "a", "rule_a", "b"
+WHERE "b".b_col_1 = "a".a_col_0 AND "rule_a".rule_a_col_0 = "a".a_col_0
+AND "rule_a".rule_a_col_0 = "b".b_col_1
+AND "rule_a".rule_a_col_1 = "b".b_col_0;
+SELECT * FROM rule_b;
+ \end{minted}
+\caption{The same generated rules as in \ref{listing:rules:1}, but in SQL format. To enforce the
+grounding, there are the SELECT queries after the rule (view) creation queries.}
+\label{listing:rules:2}
+\end{listing}
+
+
+
+
+\section[something]{Grounders}
+Each selected combination of parameters was evaluated on multiple grounders to compare the speed of
+grounding of each grounder. Each grounder is described in the following sections.
+
+\textbf{TODO:} define how to use, input and output format
+
+\subsection{Naive bottom-up grounder}
+This grounder works on a simple idea and servers as a basis for other more advanced grounders. The
+process of grounding works from the most simple rules, where all variables can be unified from the
+set of already grounded rules and facts and adds them to this while working it's way in the
+hierarchy of the rule-template (hence the bottom-up). The pseudo-algorithm can be
+
+\subsection{Prolog}
+
+\subsection{LParse}
+
+\subsection{Dlv}
+
+\subsection{Gringo}
+
+\subsection{PostgreSQL}
+
+
+% Remove or comment out the next two lines if you are not using bibtex.
+\bibliography{bib}
+
+\end{document}
+
+
