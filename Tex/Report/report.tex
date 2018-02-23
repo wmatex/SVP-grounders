@@ -6,6 +6,8 @@
 \usepackage{minted}
 \usepackage{amsmath}
 \usepackage{mathtools}
+\usepackage{algorithmic}
+\usepackage{algorithm}
 
 \DeclarePairedDelimiter{\floor}{\lfloor}{\rfloor}
 
@@ -206,7 +208,38 @@ grounding of each grounder. Each grounder is described in the following sections
 This grounder works on a simple idea and servers as a basis for other more advanced grounders. The
 process of grounding works from the most simple rules, where all variables can be unified from the
 set of already grounded rules and facts and adds them to this while working it's way in the
-hierarchy of the rule-template (hence the bottom-up). The pseudo-algorithm can be
+hierarchy of the rule-template (hence the bottom-up). The listing
+\ref{algorithm:grounder:bottom-up} shows the pseudo-algorithm of this grounder.
+
+\begin{algorithm}
+\caption{Pseudo-algorithm of the naive bottom-up grounder.}
+\label{algorithm:grounder:bottom-up}
+\begin{algorithmic}[1]
+\STATE $D \gets$ set of all ground facts
+\STATE $R \gets$ set of all non-ground rules
+\STATE $S \gets D$ (set of all grounded rules and facts)
+
+\REPEAT
+ \STATE $S_0 \gets S$
+ \FORALL{$rule \in R$}
+   \STATE $G_{rule} \gets$ all possible groundings of $rule$ head with respect to $S$
+   \STATE $S \gets S \cup G_{rule}$
+ \ENDFOR
+\UNTIL{$|S| > |S_0|$}
+\end{algorithmic}
+\end{algorithm}
+
+The bottom-up grounder has several advantages, one being the implementation simplicity and
+straightforwardness. The biggest disadvantage of the algorithm is the memory requirements. Since
+the set $S$ can grow very large with the number of facts and rules and it is commonly not required
+to generate all possible groundings of the whole template, rather to generate all possible
+groundings of a single rule (query).
+
+Another bottleneck of this algorithm relates to the 7\textsuperscript{th} line of the algorithm
+\ref{algorithm:grounder:bottom-up}. In the naive version, the possible substitutions are computed
+enumeratively from the set of all possible substitutions of all variables. This quickly becomes
+unfeasible for large facts bases and rules with deep hierarchy, where the number of combinations
+and the size of each variable domain is very large.
 
 \subsection{Prolog}
 
