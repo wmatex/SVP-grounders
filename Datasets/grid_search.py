@@ -50,7 +50,7 @@ class ResultStore:
 
     @staticmethod
     def _transform(param):
-        if param == "unique" or param == "all":
+        if param == "unique" or param == "all" or param == "count":
             return "param_" + param
 
         return param
