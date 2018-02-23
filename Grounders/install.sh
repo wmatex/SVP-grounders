@@ -62,9 +62,14 @@ function build_postgresql() {
     BUILD_DIR="build"
 
     cd postgresql
+    mkdir $BUILD_DIR
     
     wget https://ftp.postgresql.org/pub/source/v10.1/postgresql-10.1.tar.bz2
-
+    tar xvf postgresql-10.1.tar.bz2
+    cd postgresql-10.1
+    ./configure --prefix=$(realpath ../$BUILD_DIR)
+    make
+    make install
 }
 
 if [ "$1" = "--all" ]; then
@@ -75,6 +80,8 @@ if [ "$1" = "--all" ]; then
     build_dlv
     cd -
     build_lparse
+    cd -
+    build_postgresql
 elif [ "$1" = "--clingo" ]; then
     build_clingo
 elif [ "$1" = "--swi-prolog" ]; then
@@ -83,6 +90,8 @@ elif [ "$1" = "--dlv" ]; then
     build_dlv
 elif [ "$1" = "--lparse" ]; then
     build_lparse
+elif [ "$1" = "--postgresql" ]; then
+    build_postgresql
 else
     print_help
     exit 1
