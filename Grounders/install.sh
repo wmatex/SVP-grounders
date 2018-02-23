@@ -49,8 +49,8 @@ function build_lparse() {
         mkdir $BUILD_DIR
     fi
 
-    wget http://www.tcs.hut.fi/Software/smodels/src/lparse-1.1.2.tar.gz
-    tar xvf lparse-1.1.2.tar.gz
+    wget -c http://www.tcs.hut.fi/Software/smodels/src/lparse-1.1.2.tar.gz
+    tar xf lparse-1.1.2.tar.gz
     ./patch.sh
     cd lparse-1.1.2
     ./configure --prefix=../build
@@ -59,13 +59,20 @@ function build_lparse() {
 }
 
 function build_postgresql() {
+    DIR="postgresql"
     BUILD_DIR="build"
 
-    cd postgresql
-    mkdir $BUILD_DIR
+    if [ ! -d $DIR ]; then
+        mkdir $DIR
+    fi
+    cd $DIR
+
+    if [ ! -d $BUILD_DIR ]; then
+        mkdir $BUILD_DIR
+    fi
     
-    wget https://ftp.postgresql.org/pub/source/v10.1/postgresql-10.1.tar.bz2
-    tar xvf postgresql-10.1.tar.bz2
+    wget -c https://ftp.postgresql.org/pub/source/v10.1/postgresql-10.1.tar.bz2
+    tar xf postgresql-10.1.tar.bz2
     cd postgresql-10.1
     ./configure --prefix=$(realpath ../$BUILD_DIR)
     make
