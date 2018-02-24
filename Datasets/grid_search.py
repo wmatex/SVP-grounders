@@ -15,6 +15,7 @@ import tempfile
 import random
 import datetime
 import multiprocessing
+import uuid
 
 
 class Parameter:
@@ -161,12 +162,12 @@ class Runner:
         self._alter_rules_config(rules_config)
         rules.run(rules_config)
 
-        self.setup()
+        setup = self.setup()
 
-        command = self._generate_command(dataset_config['output'].name, rules_config['output'].name)
+        command = self._generate_command(dataset_config['output'].name, rules_config['output'].name, setup)
         print(self.print_info(configuration, name))
         result = self._run_process(command)
-        self.destroy()
+        self.destroy(setup)
 
         return result
 
@@ -186,13 +187,13 @@ class Runner:
     def __str__(self):
         return "Runner"
 
-    def _generate_command(self, dataset, rules):
+    def _generate_command(self, dataset, rules, setup):
         return None
 
     def setup(self):
-        pass
+        return None
 
-    def destroy(self):
+    def destroy(self, setup):
         pass
 
     def _run_process(self, command):
@@ -210,7 +211,7 @@ class Runner:
 
 
 class GringoRunner(Runner):
-    def _generate_command(self, dataset, rules):
+    def _generate_command(self, dataset, rules, setup):
         return [
             '../Grounders/clingo/build/bin/clingo', '--pre', '--mode=gringo', '--text',
             dataset, rules
@@ -221,7 +222,7 @@ class GringoRunner(Runner):
 
 
 class PrologRunner(Runner):
-    def _generate_command(self, dataset, rules):
+    def _generate_command(self, dataset, rules, setup):
         return [
             '../Grounders/swi-prolog/build/bin/swipl', '--nosignals', '-O', '--quiet', '--nodebug', '-f', dataset, '-s', rules
         ]
@@ -234,7 +235,7 @@ class PrologRunner(Runner):
 
 
 class DlvRunner(Runner):
-    def _generate_command(self, dataset, rules):
+    def _generate_command(self, dataset, rules, setup):
         return [
             '../Grounders/dlv/dlv', '-nofacts', '-silent', '-instantiate', dataset, rules
         ]
@@ -244,7 +245,7 @@ class DlvRunner(Runner):
 
 
 class LParseRunner(Runner):
-    def _generate_command(self, dataset, rules):
+    def _generate_command(self, dataset, rules, setup):
         return [
             '../Grounders/lparse/build/lparse', '-t', '-W', 'none', dataset, rules
         ]
@@ -255,16 +256,15 @@ class LParseRunner(Runner):
 class PostgreSQLRunner(Runner):
     PORT='55556'
     BUILD_DIR='../Grounders/postgresql/build/bin'
-    DB_NAME='experiment'
 
     def __init__(self):
         self._data_dir = tempfile.TemporaryDirectory()
-        subprocess.run([os.path.join(self.BUILD_DIR, 'initdb'), '-D', self._data_dir.name])
+        subprocess.run([os.path.join(self.BUILD_DIR, 'initdb'), '-D', self._data_dir.name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self._server = multiprocessing.Process(target=self._start_server)
         self._server.start()
 
     def _start_server(self):
-        subprocess.run([os.path.join(self.BUILD_DIR, 'postgres'), '-p', self.PORT, '-D', self._data_dir.name, '-c', 'logging_collector=on', '-c', 'log_directory=/tmp/pg_log'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run([os.path.join(self.BUILD_DIR, 'postgres'), '-p', self.PORT, '-D', self._data_dir.name, '-c', 'client_min_messages=PANIC'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def _alter_rules_config(self, config):
         config['data_format'] = 'sql'
@@ -274,14 +274,17 @@ class PostgreSQLRunner(Runner):
         config['format'] = 'sql'
 
     def setup(self):
-        subprocess.run([os.path.join(self.BUILD_DIR, 'createdb'), '-p', self.PORT, self.DB_NAME])
+        dbname = str(uuid.uuid4())
+        subprocess.run([os.path.join(self.BUILD_DIR, 'createdb'), '-p', self.PORT, dbname], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    def destroy(self):
-        subprocess.run([os.path.join(self.BUILD_DIR, 'dropdb'), '-p', self.PORT, self.DB_NAME])
+        return dbname
 
-    def _generate_command(self, dataset, rules):
+    def destroy(self, dbname):
+        subprocess.run([os.path.join(self.BUILD_DIR, 'dropdb'), '-p', self.PORT, dbname])
+
+    def _generate_command(self, dataset, rules, dbname):
         return [
-            os.path.join(self.BUILD_DIR, 'psql'), '-p', self.PORT, '-f', dataset, '-f', rules, self.DB_NAME
+            os.path.join(self.BUILD_DIR, 'psql'), '-p', self.PORT, '-f', dataset, '-f', rules, dbname
         ]
 
     def __str__(self):
@@ -460,10 +463,10 @@ if __name__ == "__main__":
     ],
         [
             GringoRunner(),
-            PostgreSQLRunner(),
             PrologRunner(),
             DlvRunner(),
-            LParseRunner()
+            LParseRunner(),
+            PostgreSQLRunner(),
         ]
     )
 
