@@ -379,6 +379,7 @@ class SQLImporter(Importer):
                 col_index += 1
 
 
+
 if __name__ == "__main__":
     with open(sys.argv[1], 'r') as f:
         importer = SQLImporter(f, False)
