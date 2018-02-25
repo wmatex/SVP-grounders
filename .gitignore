@@ -20,3 +20,6 @@ Tex/**/*.aux
 Tex/**/*.fls
 Tex/**/*.log
 Tex/**/*.fdb_latexmk
+Tex/**/.kile
+Tex/**/_minted-report
+Tex/**/*.kilepr
