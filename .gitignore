@@ -9,8 +9,14 @@ __pycache__
 _build
 
 /Datasets/experiments
+/Datasets/*.txt
+/Datasets/*.sql
+/Datasets/*.datalog
+
 /Grounders/dlv
 /Grounders/postgresql
+/Grounders/neurologic
+/Grounders/lrnn_output
 /Grounders/lparse/*
 !/Grounders/lparse/patch.sh
 
