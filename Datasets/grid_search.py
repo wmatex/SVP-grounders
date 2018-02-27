@@ -142,16 +142,19 @@ class ResultStore:
 class Runner:
     TIME_OUT=600
 
+    def __init__(self, temporary_dir):
+        self._temp = temporary_dir
+
     def run_experiment(self, configuration, name):
         dataset_config = configuration.copy()
-        dataset_config['output'] = tempfile.NamedTemporaryFile(mode='w+')
+        dataset_config['output'] = tempfile.NamedTemporaryFile(mode='w+', dir=self._temp)
         dataset_config['format'] = 'datalog'
 
         self._alter_dataset_config(dataset_config)
         datasets.run(dataset_config)
 
         rules_config = configuration.copy()
-        rules_config['output'] = tempfile.NamedTemporaryFile(mode='w')
+        rules_config['output'] = tempfile.NamedTemporaryFile(mode='w', dir=self._temp)
         rules_config['data'] = dataset_config['output']
         rules_config['data'].seek(0)
 
@@ -257,8 +260,10 @@ class PostgreSQLRunner(Runner):
     PORT='55556'
     BUILD_DIR='../Grounders/postgresql/build/bin'
 
-    def __init__(self):
-        self._data_dir = tempfile.TemporaryDirectory()
+    def __init__(self, temporary_dir):
+        super().__init__(temporary_dir)
+
+        self._data_dir = tempfile.TemporaryDirectory(dir=self._temp)
         subprocess.run([os.path.join(self.BUILD_DIR, 'initdb'), '-D', self._data_dir.name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self._server = multiprocessing.Process(target=self._start_server)
         self._server.start()
@@ -444,6 +449,11 @@ if __name__ == "__main__":
         help="Number of seconds to run the algorithm"
     )
 
+    parser.add_argument(
+        "-d", "--dir", type=os.path.abspath, default=tempfile.gettempdir(),
+        help="Path to the temporary directory"
+    )
+
     args = parser.parse_args()
 
     grid_search = GridSearch([
@@ -462,11 +472,11 @@ if __name__ == "__main__":
         Parameter('all', [False, True]),
     ],
         [
-            GringoRunner(),
-            PrologRunner(),
-            DlvRunner(),
-            LParseRunner(),
-            PostgreSQLRunner(),
+            GringoRunner(args.dir),
+            PrologRunner(args.dir),
+            DlvRunner(args.dir),
+            LParseRunner(args.dir),
+            PostgreSQLRunner(args.dir),
         ]
     )
 

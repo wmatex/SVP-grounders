@@ -16,4 +16,4 @@ cd $DATADIR/Datasets
 module add python36-modules-gcc
 
 # Compute
-./grid_search.py -p 4 -t 36000
+./grid_search.py -p 4 -d $SCRATCHDIR -t 36000
