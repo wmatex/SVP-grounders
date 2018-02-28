@@ -8,14 +8,21 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+
     logic::parser parser;
+    for (int i = 1; i < argc; ++i) {
+        parser.parse(argv[i]);
+    }
 
-    parser.parse(argv[1]);
-
-    const auto &facts = parser.get_facts();
-    for (auto f: facts) {
+    for (const auto &f: parser.get_facts()) {
         std::cout << f << std::endl;
     }
+
+    for (const auto &r: parser.get_rules()) {
+        std::cout << r << std::endl;
+    }
+
+
 
     return 0;
 }

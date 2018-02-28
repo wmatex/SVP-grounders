@@ -17,22 +17,9 @@ namespace logic {
 
     class fact: public fact_t {
     public:
-        fact(const std::string &name, const std::vector<constant_ptr> &constants):
-                fact_t(name, constants) {}
+        fact(std::string name, std::vector<constant_ptr> constants):
+                fact_t(std::move(name), std::move(constants)) {}
 
-        friend std::ostream& operator<<(std::ostream& o, fact& f) {
-            o << f.get_name() << "(";
-
-            std::string separator = "";
-            const auto &terms = f.get_terms();
-            for (const auto &term: terms) {
-                o << separator << term->get_name();
-                separator = ", ";
-            }
-            o << ")";
-
-            return o;
-        }
     };
 }
 

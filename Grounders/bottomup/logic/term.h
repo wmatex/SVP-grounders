@@ -6,7 +6,6 @@
 #define BOTTOMUP_TERM_H
 
 #include <string>
-#include "parser.h"
 
 namespace logic {
 
@@ -20,7 +19,7 @@ namespace logic {
         std::string _name;
 
     public:
-        explicit term(const std::string &name): _name(name) {}
+        explicit term(std::string name): _name(std::move(name)) {}
 
         virtual ~term() noexcept = default;
 

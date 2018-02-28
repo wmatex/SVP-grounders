@@ -7,6 +7,8 @@
 
 
 #include <vector>
+#include <iostream>
+#include <memory>
 #include <type_traits>
 
 #include "term.h"
@@ -19,8 +21,8 @@ namespace logic {
         std::vector<std::shared_ptr<T>> _terms;
 
     public:
-        explicit predicate(const std::string &name, const std::vector<std::shared_ptr<T>> &terms) noexcept :
-                _name(name), _terms(terms) {}
+        explicit predicate(std::string name, std::vector<std::shared_ptr<T>> terms) noexcept :
+                _name(std::move(name)), _terms(std::move(terms)) {}
 
         predicate() noexcept = default;
 
@@ -44,6 +46,19 @@ namespace logic {
 
         size_t arity() const noexcept {
             return _terms.size();
+        }
+
+        friend std::ostream& operator<<(std::ostream& o, const predicate<T>& f) {
+            o << f._name << "(";
+
+            std::string sep;
+            for (const auto &term: f._terms) {
+                o << sep << term->get_name();
+                sep = ", ";
+            }
+            o << ")";
+
+            return o;
         }
 
     };

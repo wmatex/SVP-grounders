@@ -10,6 +10,7 @@
 
 #include "fact.h"
 #include "term.h"
+#include "rule.h"
 
 namespace logic {
 
@@ -17,19 +18,23 @@ namespace logic {
     private:
         std::regex _line_regex;
         std::regex _head_regex;
+        std::regex _body_regex;
 
         std::vector<fact> _facts;
+        std::vector<rule> _rules;
 
     public:
         parser();
 
         void parse(const char *filename);
 
-        // get facts
-        // get rules
 
         const std::vector<fact> &get_facts() noexcept {
             return _facts;
+        }
+
+        const std::vector<rule> &get_rules() noexcept {
+            return _rules;
         }
 
     private:
@@ -46,13 +51,13 @@ namespace logic {
                     std::sregex_iterator(head.begin(), head.end(), _head_regex);
             auto terms_end = std::sregex_iterator();
 
-            for (std::sregex_iterator i = terms_begin; i != terms_end; ++i) {
-                std::smatch match = *i;
+            for (auto i = terms_begin; i != terms_end; ++i) {
+                const auto &match = *i;
 
-                term_list.push_back(std::move(std::make_shared<T>(match[1].str())));
+                term_list.push_back(std::make_shared<T>(match[1].str()));
             }
 
-            return std::move(term_list);
+            return term_list;
         }
     };
 

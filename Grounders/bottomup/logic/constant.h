@@ -11,7 +11,7 @@ namespace logic {
 
     class constant : public term {
     public:
-        explicit constant(const std::string &name): term(name) {}
+        explicit constant(std::string name): term(std::move(name)) {}
 
 
         term_type get_type() const noexcept override {
