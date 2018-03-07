@@ -142,6 +142,19 @@ class ResultStore:
 class Runner:
     TIME_OUT=600
 
+    registered_runners = {}
+
+    @staticmethod
+    def register(name, class_name):
+        Runner.registered_runners[name] = class_name
+
+    @staticmethod
+    def create(name, temporary_dir):
+        if name in Runner.registered_runners:
+            return Runner.registered_runners[name](temporary_dir)
+        else:
+            return None
+
     def __init__(self, temporary_dir):
         self._temp = temporary_dir
 
@@ -381,7 +394,7 @@ class GridSearch:
         print("Started on {}".format(time.strftime("%X")), file=sys.stderr)
         print("Running for {}s, ETA: {}".format(max_time, (datetime.datetime.fromtimestamp(start + max_time).strftime("%X"))))
 
-        uncompleted = self._result_store.find_uncompleted([p.name for p in self._parameters], len(self._runners))
+        uncompleted = self._result_store.find_uncompleted([p.name for p in self._parameters], len(Runner.registered_runners))
         for uncom in uncompleted:
             config = {}
             for k in uncom.keys():
@@ -439,6 +452,12 @@ class GridSearch:
 
 
 if __name__ == "__main__":
+    Runner.register('gringo', GringoRunner)
+    Runner.register('prolog', PrologRunner)
+    Runner.register('dlv', DlvRunner)
+    Runner.register('lparse', LParseRunner)
+    Runner.register('postgresql', PostgreSQLRunner)
+
     parser = argparse.ArgumentParser("Runs grid search in defined parameter space")
     parser.add_argument(
         "-p", "--threads", type=int, default=1,
@@ -454,8 +473,16 @@ if __name__ == "__main__":
         help="Path to the temporary directory"
     )
 
+    parser.add_argument(
+        '-r', "--runners", nargs='+', required=True, choices=Runner.registered_runners,
+        help="Run this specified runners"
+    )
+
     args = parser.parse_args()
 
+    runners = [Runner.create(r, args.dir) for r in args.runners]
+
+    print("Running with this runners:", ", ".join([str(r) for r in runners]))
     grid_search = GridSearch([
         Parameter('tables', [10, 50, 100]),
         Parameter('facts', [10, 500, 1000]),
@@ -471,13 +498,7 @@ if __name__ == "__main__":
         Parameter('unique', [False, True]),
         Parameter('all', [False, True]),
     ],
-        [
-            GringoRunner(args.dir),
-            PrologRunner(args.dir),
-            DlvRunner(args.dir),
-            LParseRunner(args.dir),
-            PostgreSQLRunner(args.dir),
-        ]
+    runners
     )
 
     grid_search.run(args.threads, args.time)

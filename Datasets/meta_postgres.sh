@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #PBS -N DP-Grounders
-#PBS -l select=1:ncpus=4:mem=256gb:scratch_local=20gb
+#PBS -l select=1:ncpus=2:mem=64gb:scratch_local=20gb
 #PBS -l walltime=10:00:00
 #PBS -j oe
 #PBS -m e
@@ -16,4 +16,4 @@ cd $DATADIR/Datasets
 module add python36-modules-gcc
 
 # Compute
-./grid_search.py -p 4 -d $SCRATCHDIR -t 36000 -r gringo prolog dlv lparse
+./grid_search.py -p 1 -d $SCRATCHDIR -t 36000 -r postgresql
