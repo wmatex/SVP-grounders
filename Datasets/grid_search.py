@@ -142,16 +142,32 @@ class ResultStore:
 class Runner:
     TIME_OUT=600
 
+    registered_runners = {}
+
+    @staticmethod
+    def register(name, class_name):
+        Runner.registered_runners[name] = class_name
+
+    @staticmethod
+    def create(name, temporary_dir):
+        if name in Runner.registered_runners:
+            return Runner.registered_runners[name](temporary_dir)
+        else:
+            return None
+
+    def __init__(self, temporary_dir):
+        self._temp = temporary_dir
+
     def run_experiment(self, configuration, name):
         dataset_config = configuration.copy()
-        dataset_config['output'] = tempfile.NamedTemporaryFile(mode='w+')
+        dataset_config['output'] = tempfile.NamedTemporaryFile(mode='w+', dir=self._temp)
         dataset_config['format'] = 'datalog'
 
         self._alter_dataset_config(dataset_config)
         datasets.run(dataset_config)
 
         rules_config = configuration.copy()
-        rules_config['output'] = tempfile.NamedTemporaryFile(mode='w')
+        rules_config['output'] = tempfile.NamedTemporaryFile(mode='w', dir=self._temp)
         rules_config['data'] = dataset_config['output']
         rules_config['data'].seek(0)
 
@@ -257,8 +273,10 @@ class PostgreSQLRunner(Runner):
     PORT='55556'
     BUILD_DIR='../Grounders/postgresql/build/bin'
 
-    def __init__(self):
-        self._data_dir = tempfile.TemporaryDirectory()
+    def __init__(self, temporary_dir):
+        super().__init__(temporary_dir)
+
+        self._data_dir = tempfile.TemporaryDirectory(dir=self._temp)
         subprocess.run([os.path.join(self.BUILD_DIR, 'initdb'), '-D', self._data_dir.name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self._server = multiprocessing.Process(target=self._start_server)
         self._server.start()
@@ -376,7 +394,7 @@ class GridSearch:
         print("Started on {}".format(time.strftime("%X")), file=sys.stderr)
         print("Running for {}s, ETA: {}".format(max_time, (datetime.datetime.fromtimestamp(start + max_time).strftime("%X"))))
 
-        uncompleted = self._result_store.find_uncompleted([p.name for p in self._parameters], len(self._runners))
+        uncompleted = self._result_store.find_uncompleted([p.name for p in self._parameters], len(Runner.registered_runners))
         for uncom in uncompleted:
             config = {}
             for k in uncom.keys():
@@ -434,6 +452,12 @@ class GridSearch:
 
 
 if __name__ == "__main__":
+    Runner.register('gringo', GringoRunner)
+    Runner.register('prolog', PrologRunner)
+    Runner.register('dlv', DlvRunner)
+    Runner.register('lparse', LParseRunner)
+    Runner.register('postgresql', PostgreSQLRunner)
+
     parser = argparse.ArgumentParser("Runs grid search in defined parameter space")
     parser.add_argument(
         "-p", "--threads", type=int, default=1,
@@ -444,8 +468,21 @@ if __name__ == "__main__":
         help="Number of seconds to run the algorithm"
     )
 
+    parser.add_argument(
+        "-d", "--dir", type=os.path.abspath, default=tempfile.gettempdir(),
+        help="Path to the temporary directory"
+    )
+
+    parser.add_argument(
+        '-r', "--runners", nargs='+', required=True, choices=Runner.registered_runners,
+        help="Run this specified runners"
+    )
+
     args = parser.parse_args()
 
+    runners = [Runner.create(r, args.dir) for r in args.runners]
+
+    print("Running with this runners:", ", ".join([str(r) for r in runners]))
     grid_search = GridSearch([
         Parameter('tables', [10, 50, 100]),
         Parameter('facts', [10, 500, 1000]),
@@ -461,13 +498,7 @@ if __name__ == "__main__":
         Parameter('unique', [False, True]),
         Parameter('all', [False, True]),
     ],
-        [
-            GringoRunner(),
-            PrologRunner(),
-            DlvRunner(),
-            LParseRunner(),
-            PostgreSQLRunner(),
-        ]
+    runners
     )
 
     grid_search.run(args.threads, args.time)
