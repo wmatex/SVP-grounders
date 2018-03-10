@@ -218,7 +218,6 @@ class Runner:
             subprocess.run(command, stdout=subprocess.DEVNULL, timeout=self.TIME_OUT, stderr=subprocess.DEVNULL)
             end = time.perf_counter()
             run_time = "{0:.5f}".format(end - start)
-            print(run_time, file=sys.stderr)
         except subprocess.TimeoutExpired:
             print("Timeout expired", file=sys.stderr)
             run_time = None
@@ -292,7 +291,7 @@ class PostgreSQLRunner(Runner):
         config['format'] = 'sql'
 
     def setup(self):
-        dbname = str(uuid.uuid4())
+        dbname = str(uuid.uuid4()).replace('-', '')
         subprocess.run([os.path.join(self.BUILD_DIR, 'createdb'), '-p', self.PORT, dbname], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         return dbname
