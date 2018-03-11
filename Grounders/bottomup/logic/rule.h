@@ -10,24 +10,37 @@
 
 namespace logic {
 
-    using variable_ptr = std::shared_ptr<variable>;
-    using rule_t = predicate<variable>;
-    using rule_t_ptr = std::shared_ptr<rule_t>;
 
-    class rule: public rule_t {
+    class rule: public predicate<variable> {
+    public:
+        using rule_t = predicate<variable>;
+
     protected:
-        std::vector<rule_t_ptr> _body;
+        std::vector<rule_t> _body;
 
     public:
-        rule(std::string name, const std::vector<variable_ptr> &variables):
-                rule_t(std::move(name), variables), _body() {}
+        rule(std::string name, std::vector<variable> variables):
+                rule_t(std::move(name), std::move(variables)), _body() {}
 
 
-        void add_body(std::string name, std::vector<variable_ptr> variables);
+        void add_body(std::string name, std::vector<variable> variables);
+
+        const std::vector<rule_t>& get_body() const {
+            return _body;
+        }
 
         friend std::ostream& operator<<(std::ostream& o, const rule& r);
     };
 
+}
+
+namespace std {
+    template<>
+    struct hash<logic::rule> {
+        size_t operator() (const logic::rule &r) const noexcept {
+            return std::hash<std::string>()(r.get_string());
+        }
+    };
 }
 
 

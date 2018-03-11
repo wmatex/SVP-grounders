@@ -5,24 +5,31 @@
 #ifndef BOTTOMUP_PREDICATE_H
 #define BOTTOMUP_PREDICATE_H
 
+#include <functional>
 
 #include <vector>
 #include <iostream>
-#include <memory>
 #include <type_traits>
+#include <sstream>
 
 #include "term.h"
 
 namespace logic {
-    template <typename T, typename = std::enable_if_t<std::is_base_of<term, T>::value> >
+
+    template <typename T>
     class predicate {
     protected:
         std::string _name;
-        std::vector<std::shared_ptr<T>> _terms;
+        std::vector<T> _terms;
+        std::string _string_rep;
 
     public:
-        explicit predicate(std::string name, std::vector<std::shared_ptr<T>> terms) noexcept :
-                _name(std::move(name)), _terms(std::move(terms)) {}
+        explicit predicate(std::string name, std::vector<T> terms) noexcept :
+                _name(std::move(name)), _terms(std::move(terms)), _string_rep("") {
+            std::stringstream ss;
+            ss << *this;
+            _string_rep = ss.str();
+        }
 
         predicate() noexcept = default;
 
@@ -32,15 +39,20 @@ namespace logic {
             return _name;
         }
 
+
 //        void add_term(const T &term) noexcept {
 //            _terms.push_back(term);
 //        }
 
-        T& operator[](size_t index) {
+        const T& operator[](size_t index) const {
             return _terms[index];
         }
 
-        const std::vector<std::shared_ptr<T>>& get_terms() const {
+        bool operator==(const predicate<T> &other) const noexcept {
+            return _string_rep == other._string_rep;
+        }
+
+        const std::vector<T>& get_terms() const {
             return _terms;
         }
 
@@ -48,19 +60,36 @@ namespace logic {
             return _terms.size();
         }
 
-        friend std::ostream& operator<<(std::ostream& o, const predicate<T>& f) {
-            o << f._name << "(";
+        const std::string get_string() const noexcept {
+            return _string_rep;
+        }
 
-            std::string sep;
-            for (const auto &term: f._terms) {
-                o << sep << term->get_name();
-                sep = ", ";
+        friend std::ostream& operator<<(std::ostream& o, const predicate<T>& f) {
+            if (f._string_rep.size() > 0) {
+                o << f._string_rep;
+            } else {
+                o << f._name << "(";
+
+                std::string sep;
+                for (const auto &term: f._terms) {
+                    o << sep << term.get_name();
+                    sep = ", ";
+                }
+                o << ")";
             }
-            o << ")";
 
             return o;
         }
 
+    };
+}
+
+namespace std {
+    template <typename T>
+    struct hash<logic::predicate<T>> {
+        size_t operator()(const logic::predicate<T> &p) const noexcept {
+            return std::hash<std::string>()(p.get_string());
+        }
     };
 }
 

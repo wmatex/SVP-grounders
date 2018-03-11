@@ -8,8 +8,8 @@
 #include "rule.h"
 
 namespace logic {
-    void rule::add_body(std::string name, std::vector<variable_ptr> variables) {
-        _body.push_back(std::make_shared<rule_t>(std::move(name), std::move(variables)));
+    void rule::add_body(std::string name, std::vector<variable> variables) {
+        _body.emplace_back(std::move(name), std::move(variables));
     }
 
     std::ostream &operator<<(std::ostream &o, const logic::rule &r) {
@@ -18,14 +18,14 @@ namespace logic {
         std::string sep;
 
         for (const auto &t: r._terms) {
-            o << sep << t->get_name();
+            o << sep << t.get_name();
             sep = ", ";
         }
         o << ") :- ";
 
         sep = "";
         for (const auto &sub_r: r._body) {
-            o << sep << *sub_r;
+            o << sep << sub_r;
             sep = ", ";
         }
 

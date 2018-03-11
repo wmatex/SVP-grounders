@@ -19,6 +19,8 @@ namespace logic {
         std::string _name;
 
     public:
+        term() = default;
+
         explicit term(std::string name): _name(std::move(name)) {}
 
         virtual ~term() noexcept = default;
@@ -29,6 +31,19 @@ namespace logic {
             return _name;
         }
 
+        bool operator!= (const term &other) const noexcept {
+            return _name != other._name;
+        }
+
+    };
+}
+
+namespace std {
+    template <>
+    struct hash<logic::term> {
+        size_t operator()(const logic::term &t) const noexcept {
+            return std::hash<std::string>()(t.get_name());
+        }
     };
 }
 

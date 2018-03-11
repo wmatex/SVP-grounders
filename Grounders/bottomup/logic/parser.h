@@ -29,11 +29,11 @@ namespace logic {
         void parse(const char *filename);
 
 
-        const std::vector<fact> &get_facts() noexcept {
+        const std::vector<fact> &get_facts() const noexcept {
             return _facts;
         }
 
-        const std::vector<rule> &get_rules() noexcept {
+        const std::vector<rule> &get_rules() const noexcept {
             return _rules;
         }
 
@@ -44,8 +44,8 @@ namespace logic {
 
 
         template<typename T>
-        std::vector<std::shared_ptr<T>> parse_head(const std::string &head) noexcept {
-            std::vector<std::shared_ptr<T>> term_list;
+        std::vector<T> parse_head(const std::string &head) noexcept {
+            std::vector<T> term_list;
 
             auto terms_begin =
                     std::sregex_iterator(head.begin(), head.end(), _head_regex);
@@ -54,7 +54,7 @@ namespace logic {
             for (auto i = terms_begin; i != terms_end; ++i) {
                 const auto &match = *i;
 
-                term_list.push_back(std::make_shared<T>(match[1].str()));
+                term_list.push_back(T(match[1].str()));
             }
 
             return term_list;
