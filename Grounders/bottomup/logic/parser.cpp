@@ -25,7 +25,7 @@ namespace logic {
         const int BODY = 4;
         std::ifstream source(filename);
 
-        while (!source.eof()) {
+        while (!source.eof() && source.is_open()) {
             std::string line;
             std::getline(source, line);
 

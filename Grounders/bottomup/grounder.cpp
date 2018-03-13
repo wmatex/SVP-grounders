@@ -24,7 +24,7 @@ void grounder::preprocess() noexcept {
 const typename grounder::pred_fact_map& grounder::ground() {
     using namespace logic;
 
-    bool done = false;
+    bool done = _grounded.empty();
 
     while (!done) {
         size_t prev_size = _grounded.size();
@@ -85,7 +85,7 @@ std::shared_ptr<logic::fact> grounder::apply(const substitution &substitution, c
         head.emplace_back(substitution.at(*var));
     }
 
-    return std::make_shared<logic::fact>(rule.get_name(), head);
+    return std::make_shared<logic::fact>(rule.get_name(), std::move(head));
 }
 
 std::vector<grounder::substitution> grounder::create_substitutions(const logic::rule::rule_t &rule,
@@ -100,7 +100,7 @@ std::vector<grounder::substitution> grounder::create_substitutions(const logic::
         for (int i = 0; i < terms.size(); ++i) {
             if (s.count(*terms[i]) < 1) {
                 s.emplace(*terms[i], (*fact)[i]);
-            } else if (*s[*terms[i]] != *(*fact)[i]) {
+            } else if (*s.at(*terms[i]) != *(*fact)[i]) {
                 valid = false;
                 break;
             }
