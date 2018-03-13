@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
 
     for (const auto &pair: grounded) {
         for (const auto &fact: pair.second) {
-            std::cout << fact << "." << std::endl;
+            std::cout << *fact << "." << std::endl;
         }
     }
 

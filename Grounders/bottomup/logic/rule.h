@@ -5,6 +5,8 @@
 #ifndef BOTTOMUP_RULE_H
 #define BOTTOMUP_RULE_H
 
+#include <memory>
+
 #include "variable.h"
 #include "predicate.h"
 
@@ -14,18 +16,19 @@ namespace logic {
     class rule: public predicate<variable> {
     public:
         using rule_t = predicate<variable>;
+        using rule_ptr = std::shared_ptr<rule_t>;
 
     protected:
-        std::vector<rule_t> _body;
+        std::vector<rule_ptr> _body;
 
     public:
-        rule(std::string name, std::vector<variable> variables):
+        rule(std::string name, std::vector<std::shared_ptr<variable>> variables):
                 rule_t(std::move(name), std::move(variables)), _body() {}
 
 
-        void add_body(std::string name, std::vector<variable> variables);
+        void add_body(std::string name, std::vector<std::shared_ptr<variable>> variables);
 
-        const std::vector<rule_t>& get_body() const {
+        const std::vector<rule_ptr>& get_body() const {
             return _body;
         }
 

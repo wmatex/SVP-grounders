@@ -21,10 +21,11 @@ class grounder {
 private:
 
 public:
+    using fact_set = std::unordered_set<std::shared_ptr<logic::fact>, logic::ptr_hash, logic::ptr_compare>;
     using pred_fact_map =
     std::unordered_map<
             std::string,
-            std::unordered_set<logic::fact>
+            fact_set
     >;
 
     std::vector<logic::fact> _facts;
@@ -40,7 +41,7 @@ public:
 
     using substitution = logic::substitution_set<>::substitution;
 
-    logic::fact apply(const substitution&, const logic::rule&) const noexcept;
+    std::shared_ptr<logic::fact> apply(const substitution&, const logic::rule&) const noexcept;
 
 private:
     void preprocess() noexcept;
@@ -48,7 +49,7 @@ private:
 
     std::vector<substitution> find_substitutions(const logic::rule::rule_t& rule);
 
-    std::vector<substitution> create_substitutions(const logic::rule::rule_t& rule, const std::unordered_set<logic::fact>& ground);
+    std::vector<substitution> create_substitutions(const logic::rule::rule_t& rule, const fact_set& ground);
 };
 
 

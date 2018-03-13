@@ -37,7 +37,7 @@ void substitution_set<V, C, P>::update_substitutions(
         for (const auto &pair: sub) {
             if (substitution.count(pair.first) > 0) {
                 // Valid substitution already exist
-                if (substitution[pair.first] != pair.second) {
+                if (*(substitution[pair.first]) != *(pair.second)) {
                     remove_all_assignments(sub, substitution);
                     valid = false;
                     break;

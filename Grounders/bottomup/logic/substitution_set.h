@@ -7,6 +7,7 @@
 
 #include <unordered_map>
 #include <list>
+#include <iostream>
 
 #include "variable.h"
 #include "constant.h"
@@ -17,7 +18,7 @@ namespace logic {
     template<typename Var = variable, typename Const = constant, typename Predicate = predicate<Var>>
     class substitution_set {
     public:
-        using substitution = std::unordered_map<Var, Const>;
+        using substitution = std::unordered_map<Var, std::shared_ptr<Const>>;
         using list = std::vector<substitution>;
 
         substitution_set() = default;
@@ -25,6 +26,14 @@ namespace logic {
         void add_pred_substitution(const Predicate& p, substitution s) noexcept;
 
         list get_valid_substitutions() const noexcept;
+
+        static void print(const substitution &s) {
+            std::cout << "[ ";
+            for (const auto& p: s) {
+                std::cout << p.first.get_name() << "=>" << p.second->get_name() << ",";
+            }
+            std::cout << "]" << std::endl;
+        }
 
     private:
         using predicate_map = std::unordered_map<

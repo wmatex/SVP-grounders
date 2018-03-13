@@ -16,9 +16,12 @@ namespace logic {
     public:
         using fact_t = predicate<constant>;
 
-        fact(std::string name, std::vector<constant> constants):
+        fact(std::string name, std::vector<std::shared_ptr<constant>> constants):
                 fact_t(std::move(name), std::move(constants)) {}
 
+
+        fact(const fact&) = default;
+        fact(fact&&) = default;
     };
 }
 

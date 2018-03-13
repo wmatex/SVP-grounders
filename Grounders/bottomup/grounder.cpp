@@ -17,7 +17,7 @@ grounder::grounder(const logic::parser &parser) noexcept :
 
 void grounder::preprocess() noexcept {
     for (const auto &fact: _facts) {
-        _grounded[fact.get_name()].insert(fact);
+        _grounded[fact.get_name()].insert(std::make_shared<logic::fact>(fact));
     }
 }
 
@@ -34,11 +34,11 @@ const typename grounder::pred_fact_map& grounder::ground() {
                 substitution_set<> subs_set;
 
                 for (const auto &body_pred: rule.get_body()) {
-                    auto substitutions = find_substitutions(body_pred);
+                    auto substitutions = find_substitutions(*body_pred);
 
                     if (!substitutions.empty()) {
                         for (auto &s: substitutions) {
-                            subs_set.add_pred_substitution(body_pred, std::move(s));
+                            subs_set.add_pred_substitution(*body_pred, std::move(s));
                         }
                     } else {
                         break;
@@ -49,7 +49,10 @@ const typename grounder::pred_fact_map& grounder::ground() {
 
 
                 for (const auto &s: valid_subs) {
-                    _grounded[rule.get_name()].insert(this->apply(s, rule));
+                    std::shared_ptr<logic::fact> fact = this->apply(s, rule);
+                    if (fact != nullptr) {
+                        _grounded[rule.get_name()].insert(std::move(fact));
+                    }
                 }
             }
         }
@@ -70,29 +73,43 @@ std::vector<grounder::substitution> grounder::find_substitutions(const logic::ru
     }
 }
 
-logic::fact grounder::apply(const substitution &substitution, const logic::rule &rule) const noexcept {
+std::shared_ptr<logic::fact> grounder::apply(const substitution &substitution, const logic::rule &rule) const noexcept {
     const auto &vars = rule.get_terms();
 
-    std::vector<logic::constant> head;
+    std::vector<std::shared_ptr<logic::constant>> head;
     for (const auto& var: vars) {
-        head.emplace_back(substitution.at(var));
+        if (substitution.count(*var) < 1) {
+            return nullptr;
+        }
+
+        head.emplace_back(substitution.at(*var));
     }
 
-    return logic::fact(rule.get_name(), head);
+    return std::make_shared<logic::fact>(rule.get_name(), head);
 }
 
 std::vector<grounder::substitution> grounder::create_substitutions(const logic::rule::rule_t &rule,
-                                                                const std::unordered_set<logic::fact> &ground) {
+                                                                const grounder::fact_set &ground) {
     std::vector<grounder::substitution> substitutions;
 
     for (const auto &fact: ground) {
         grounder::substitution s;
+        bool valid = true;
         const auto &terms = rule.get_terms();
+
         for (int i = 0; i < terms.size(); ++i) {
-            s.emplace(terms[i], fact[i]);
+            if (s.count(*terms[i]) < 1) {
+                s.emplace(*terms[i], (*fact)[i]);
+            } else if (*s[*terms[i]] != *(*fact)[i]) {
+                valid = false;
+                break;
+            }
         }
 
-        substitutions.push_back(std::move(s));
+
+        if (valid) {
+            substitutions.push_back(std::move(s));
+        }
     }
 
     return substitutions;

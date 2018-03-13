@@ -10,6 +10,7 @@
 #include <vector>
 #include <iostream>
 #include <type_traits>
+#include <memory>
 #include <sstream>
 
 #include "term.h"
@@ -20,11 +21,11 @@ namespace logic {
     class predicate {
     protected:
         std::string _name;
-        std::vector<T> _terms;
+        std::vector<std::shared_ptr<T>> _terms;
         std::string _string_rep;
 
     public:
-        explicit predicate(std::string name, std::vector<T> terms) noexcept :
+        explicit predicate(std::string name, std::vector<std::shared_ptr<T>> terms) noexcept :
                 _name(std::move(name)), _terms(std::move(terms)), _string_rep("") {
             std::stringstream ss;
             ss << *this;
@@ -32,6 +33,9 @@ namespace logic {
         }
 
         predicate() noexcept = default;
+
+        predicate(const predicate<T>&) = default;
+        predicate(predicate<T>&&) noexcept = default;
 
         virtual ~predicate() = default;
 
@@ -44,7 +48,7 @@ namespace logic {
 //            _terms.push_back(term);
 //        }
 
-        const T& operator[](size_t index) const {
+        const std::shared_ptr<T>& operator[](size_t index) const {
             return _terms[index];
         }
 
@@ -52,7 +56,7 @@ namespace logic {
             return _string_rep == other._string_rep;
         }
 
-        const std::vector<T>& get_terms() const {
+        const std::vector<std::shared_ptr<T>>& get_terms() const {
             return _terms;
         }
 
@@ -72,7 +76,7 @@ namespace logic {
 
                 std::string sep;
                 for (const auto &term: f._terms) {
-                    o << sep << term.get_name();
+                    o << sep << term->get_name();
                     sep = ", ";
                 }
                 o << ")";
@@ -81,6 +85,20 @@ namespace logic {
             return o;
         }
 
+    };
+
+    struct ptr_hash {
+        template <typename T>
+        std::size_t operator() (std::shared_ptr<T> const &p) const {
+            return std::hash<T>()(*p);
+        }
+    };
+    struct ptr_compare {
+        template <typename T>
+        size_t operator() (std::shared_ptr<T> const &a,
+                           std::shared_ptr<T> const &b) const {
+            return *a == *b;
+        }
     };
 }
 
