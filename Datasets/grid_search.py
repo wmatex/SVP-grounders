@@ -111,7 +111,7 @@ class ResultStore:
             return self._cursor.fetchall()
 
     def insert(self, configuration, value):
-        sql = "INSERT INTO {table} ({keys}) VALUES ({values});"
+        sql = "REPLACE INTO {table} ({keys}) VALUES ({values});"
 
         values = []
         keys = []
@@ -331,6 +331,7 @@ class Consumer(threading.Thread):
                     break
 
                 if str(runner) not in runners:
+                    self._grid_search.store_result(configuration, runner, "-1")
                     result = runner.run_experiment(configuration, self._name)
                     self._grid_search.store_result(configuration, runner, result)
 
